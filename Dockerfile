@@ -12,7 +12,7 @@
 # and clean up the web/ source code
 #########################################################################
 
-FROM alpine:latest AS app-builder
+FROM public.ecr.aws/docker/library/alpine:latest AS app-builder
 
 RUN apk add --no-cache \
     autoconf \
@@ -62,7 +62,7 @@ RUN export CPPFLAGS="-DPNG_ARM_NEON_OPT=0" && \
 # Next, create the base environment for Python
 #########################################################################
 
-FROM alpine:latest AS env-builder
+FROM public.ecr.aws/docker/library/alpine:latest as env-builder
 
 # Install dependencies
 COPY requirements.txt /
@@ -114,14 +114,14 @@ RUN rm -rf /pgadmin4/docs/en_US/_build/html/_static/*.png
 # Create additional builders to get all of the PostgreSQL utilities
 #########################################################################
 
-FROM postgres:10-alpine AS pg10-builder
-FROM postgres:11-alpine AS pg11-builder
-FROM postgres:12-alpine AS pg12-builder
-FROM postgres:13-alpine AS pg13-builder
-FROM postgres:14-alpine AS pg14-builder
-FROM postgres:15-alpine AS pg15-builder
+FROM public.ecr.aws/docker/library/postgres:10-alpine as pg10-builder
+FROM public.ecr.aws/docker/library/postgres:11-alpine as pg11-builder
+FROM public.ecr.aws/docker/library/postgres:12-alpine as pg12-builder
+FROM public.ecr.aws/docker/library/postgres:13-alpine as pg13-builder
+FROM public.ecr.aws/docker/library/postgres:14-alpine as pg14-builder
+FROM public.ecr.aws/docker/library/postgres:15-alpine as pg15-builder
 
-FROM alpine:latest AS tool-builder
+FROM public.ecr.aws/docker/library/alpine:latest as tool-builder
 
 # Copy the PG binaries
 COPY --from=pg10-builder /usr/local/bin/pg_dump /usr/local/pgsql/pgsql-10/
@@ -158,7 +158,7 @@ COPY --from=pg15-builder /usr/local/bin/psql /usr/local/pgsql/pgsql-15/
 # Assemble everything into the final container.
 #########################################################################
 
-FROM alpine:latest
+FROM public.ecr.aws/docker/library/alpine:latest
 
 # Copy in the Python packages
 COPY --from=env-builder /venv /venv
