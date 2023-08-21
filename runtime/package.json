@@ -27,8 +27,8 @@
     "bootstrap": "^4.5.3"
   },
   "devDependencies": {
-    "eslint": "^8.41.0",
-    "nw": "^0.76.0"
+    "eslint": "^8.42.0",
+    "nw": "^0.77.0"
   },
   "scripts": {
     "linter": "yarn eslint --no-eslintrc -c .eslintrc.js --ext .js ."

@@ -217,6 +217,7 @@ REM Main build sequence Ends
     ECHO Installing javascript dependencies...
     CD "%BUILDROOT%\web"
     CALL yarn install || EXIT /B 1
+    CALL npm rebuild || EXIT /B 1
 
     ECHO Bundling javascript...
     CALL yarn run bundle || EXIT /B 1
@@ -291,6 +292,15 @@ REM Main build sequence Ends
     REM WGET END
 
     MOVE "%BUILDROOT%\runtime\nw.exe" "%BUILDROOT%\runtime\pgAdmin4.exe"
+    ECHO Attempting to sign the pgAdmin4.exe...
+    CALL "%PGADMIN_SIGNTOOL_DIR%\signtool.exe" sign /tr http://timestamp.digicert.com "%BUILDROOT%\runtime\pgAdmin4.exe"
+    IF %ERRORLEVEL% NEQ 0 (
+        ECHO.
+        ECHO ************************************************************
+        ECHO * Failed to sign the pgAdmin4.exe
+        ECHO ************************************************************
+        PAUSE
+    )
 
     ECHO Replacing executable icon...
     CALL yarn --cwd "%TMPDIR%" add winresourcer || EXIT /B
@@ -334,7 +344,7 @@ REM Main build sequence Ends
     DEL /s "%WD%\pkg\win32\installer.iss.in_stage*" > nul
 
     ECHO Creating windows installer using INNO tool...
-    CALL "%PGADMIN_INNOTOOL_DIR%\ISCC.exe" /q "%WD%\pkg\win32\installer.iss" || EXIT /B 1
+    CALL "%PGADMIN_INNOTOOL_DIR%\ISCC.exe" "%WD%\pkg\win32\installer.iss" || EXIT /B 1
 
     ECHO Renaming installer...
     MOVE "%WD%\pkg\win32\Output\pgadmin4-setup.exe" "%DISTROOT%\%INSTALLERNAME%" > nul || EXIT /B 1
