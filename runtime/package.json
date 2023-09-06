@@ -23,12 +23,12 @@
     "256": "assets/pgAdmin4.png"
   },
   "dependencies": {
-    "axios": "^1.4.0",
+    "axios": "^1.5.0",
     "bootstrap": "^4.5.3"
   },
   "devDependencies": {
     "eslint": "^8.42.0",
-    "nw": "^0.77.0"
+    "nw": "0.77.0"
   },
   "scripts": {
     "linter": "yarn eslint --no-eslintrc -c .eslintrc.js --ext .js ."

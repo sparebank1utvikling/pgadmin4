@@ -38,7 +38,13 @@ CREATE {% if data.relpersistence %}UNLOGGED {% endif %}TABLE{% if add_not_exists
 
         INCLUDING STORAGE{% endif %}{% if data.like_comments %}
 
-        INCLUDING COMMENTS{% endif %}{% if data.columns|length > 0 %},
+        INCLUDING COMMENTS{% endif %}{% if data.like_generated %}
+
+        INCLUDING GENERATED{% endif %}{% if data.like_identity %}
+
+        INCLUDING IDENTITY{% endif %}{% if data.like_statistics %}
+
+        INCLUDING STATISTICS{% endif %}{% if data.columns|length > 0 %},
 {% endif %}
 
 {% endif %}
@@ -80,6 +86,11 @@ CACHE {{c.seqcache|int}} {% endif %}
 {### If we are inheriting it from another table(s) ###}
 {% if data.coll_inherits %}
     INHERITS ({% for val in data.coll_inherits %}{% if loop.index != 1 %}, {% endif %}{{val}}{% endfor %}){% if not data.spcname and not with_clause %};{% endif %}
+{% endif %}
+{% if data.default_amname and data.default_amname != data.amname and data.amname is not none %}
+USING {{data.amname}}
+{% elif not data.default_amname and data.amname %}
+USING {{data.amname}}
 {% endif %}
 
 {% if with_clause %}

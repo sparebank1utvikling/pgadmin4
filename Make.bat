@@ -26,6 +26,7 @@ CALL :CLEAN || EXIT /B 1
 CALL :CREATE_VIRTUAL_ENV || EXIT /B 1
 CALL :CREATE_PYTHON_ENV || EXIT /B 1
 CALL :CREATE_RUNTIME_ENV || EXIT /B 1
+CALL :GENERATE_SBOM || EXIT /B 1
 CALL :CREATE_INSTALLER || EXIT /B 1
 CALL :SIGN_INSTALLER || EXIT /B 1
 
@@ -275,10 +276,16 @@ REM Main build sequence Ends
     REM YARN END
 
     REM WGET
-    FOR /f "tokens=2 delims='" %%i IN ('yarn info nw ^| findstr "latest: "') DO SET "NW_VERSION=%%i"
-    :GET_NW
-        wget https://dl.nwjs.io/v%NW_VERSION%/nwjs-v%NW_VERSION%-win-x64.zip -O "%TMPDIR%\nwjs-v%NW_VERSION%-win-x64.zip"
-        IF %ERRORLEVEL% NEQ 0 GOTO GET_NW
+    REM Comment out the below line as the latest version having some
+    REM problem https://github.com/nwjs/nw.js/issues/7964, so for the time being
+    REM hardcoded the version to 0.77.0
+    REM FOR /f "tokens=2 delims='" %%i IN ('yarn info nw ^| findstr "latest: "') DO SET "NW_VERSION=%%i"
+    REM :GET_NW
+    REM    wget https://dl.nwjs.io/v%NW_VERSION%/nwjs-v%NW_VERSION%-win-x64.zip -O "%TMPDIR%\nwjs-v%NW_VERSION%-win-x64.zip"
+    REM    IF %ERRORLEVEL% NEQ 0 GOTO GET_NW
+
+    SET "NW_VERSION=0.77.0"
+    wget https://dl.nwjs.io/v%NW_VERSION%/nwjs-v%NW_VERSION%-win-x64.zip -O "%TMPDIR%\nwjs-v%NW_VERSION%-win-x64.zip"
 
     tar -C "%TMPDIR%" -xvf "%TMPDIR%\nwjs-v%NW_VERSION%-win-x64.zip" || EXIT /B 1
     REM WGET END
@@ -308,8 +315,8 @@ REM Main build sequence Ends
 
     ECHO Staging PostgreSQL components...
     COPY "%PGADMIN_POSTGRES_DIR%\bin\libpq.dll" "%BUILDROOT%\runtime" > nul || EXIT /B 1
-    COPY "%PGADMIN_POSTGRES_DIR%\bin\libcrypto-1_1-x64.dll" "%BUILDROOT%\runtime" > nul || EXIT /B 1
-    COPY "%PGADMIN_POSTGRES_DIR%\bin\libssl-1_1-x64.dll" "%BUILDROOT%\runtime" > nul || EXIT /B 1
+    COPY "%PGADMIN_POSTGRES_DIR%\bin\libcrypto-*-x64.dll" "%BUILDROOT%\runtime" > nul || EXIT /B 1
+    COPY "%PGADMIN_POSTGRES_DIR%\bin\libssl-*-x64.dll" "%BUILDROOT%\runtime" > nul || EXIT /B 1
     IF EXIST "%PGADMIN_POSTGRES_DIR%\bin\libintl-*.dll" COPY "%PGADMIN_POSTGRES_DIR%\bin\libintl-*.dll" "%BUILDROOT%\runtime" > nul
     IF EXIST "%PGADMIN_POSTGRES_DIR%\bin\libiconv-*.dll" COPY "%PGADMIN_POSTGRES_DIR%\bin\libiconv-*.dll" "%BUILDROOT%\runtime" > nul
     COPY "%PGADMIN_POSTGRES_DIR%\bin\zlib.dll" "%BUILDROOT%\runtime" > nul || EXIT /B 1
@@ -355,6 +362,9 @@ REM Main build sequence Ends
     CD %WD%
     EXIT /B 0
 
+:GENERATE_SBOM
+    ECHO Generating SBOM...
+    CALL syft "%BUILDROOT%" -o cyclonedx-json > "%BUILDROOT%\sbom.json"
 
 :SIGN_INSTALLER
     ECHO Attempting to sign the installer...
