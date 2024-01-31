@@ -2,12 +2,12 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import gettext from 'sources/gettext';
 import { Box } from '@material-ui/core';
 import { DefaultButton, PrimaryButton } from '../components/Buttons';
@@ -31,7 +31,7 @@ export default function ConnectServerContent({closeModal, data, onOK, setHeight}
 
   const onTextChange = (e, id) => {
     let val = e;
-    if(e && e.target) {
+    if(e?.target) {
       val = e.target.value;
     }
     setFormData((prev)=>({...prev, [id]: val}));
@@ -44,11 +44,10 @@ export default function ConnectServerContent({closeModal, data, onOK, setHeight}
     }
   };
 
-  useEffect(()=>{
-    setTimeout(()=>{
-      firstEleRef.current && firstEleRef.current.focus();
-    }, 350);
-  }, [firstEleRef.current]);
+
+  useLayoutEffect(()=>{
+    firstEleRef.current?.focus();
+  }, []);
 
   useEffect(()=>{
     setHeight?.(containerRef.current?.offsetHeight);

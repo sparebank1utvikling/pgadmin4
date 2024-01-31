@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -22,6 +22,7 @@ import ForeignKeySchema from '../../../../../browser/server_groups/servers/datab
 import diffArray from 'diff-arrays-of-objects';
 import TableSchema from '../../../../../browser/server_groups/servers/databases/schemas/tables/static/js/table.ui';
 import ColumnSchema from '../../../../../browser/server_groups/servers/databases/schemas/tables/columns/static/js/column.ui';
+import { Polygon } from '@projectstorm/geometry';
 
 export default class ERDCore {
   constructor() {
@@ -174,6 +175,11 @@ export default class ERDCore {
   getEngine() {return this.engine;}
 
   getModel() {return this.getEngine().getModel();}
+
+  getBoundingLinksRect() {
+    return Polygon.boundingBoxFromPolygons(
+      this.getEngine().getModel().getLinks().map((l)=>l.getBoundingBox()));
+  }
 
   getNewNode(initData, dataUrl=null) {
     return this.getEngine().getNodeFactories().getFactory('table').generateModel({
@@ -609,7 +615,7 @@ export default class ERDCore {
     _.forIn(tableNodesDict, (node, uid)=>{
       let nodeData = node.getData();
       if(nodeData.foreign_key) {
-        nodeData.foreign_key.forEach((theFk)=>{
+        nodeData.foreign_key = nodeData.foreign_key.filter((theFk)=>{
           delete theFk.oid;
           theFk = theFk.columns[0];
           theFk.references = oidUidMap[theFk.references];
@@ -621,11 +627,17 @@ export default class ERDCore {
           };
           let sourceNode = tableNodesDict[newData.referenced_table_uid];
           let targetNode = tableNodesDict[newData.local_table_uid];
+          // When generating for schema, there may be a reference to another schema table
+          // We'll remove the FK completely in such cases.
+          if(!sourceNode || !targetNode) {
+            return false;
+          }
 
           newData.local_column_attnum = _.find(targetNode.getColumns(), (col)=>col.name==theFk.local_column).attnum;
           newData.referenced_column_attnum = _.find(sourceNode.getColumns(), (col)=>col.name==theFk.referenced).attnum;
 
           this.addLink(newData, 'onetomany');
+          return true;
         });
       }
     });

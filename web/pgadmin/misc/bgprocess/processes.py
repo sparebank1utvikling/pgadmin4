@@ -3,7 +3,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL License
 #
 ##########################################################################
@@ -16,7 +16,7 @@ import os
 import sys
 import psutil
 from abc import ABCMeta, abstractmethod
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from pickle import dumps, loads
 from subprocess import Popen, PIPE
 import logging
@@ -29,7 +29,6 @@ from pgadmin.utils.constants import KERBEROS
 from pgadmin.utils.locker import ConnectionLocker
 from pgadmin.utils.preferences import Preferences
 
-import pytz
 from dateutil import parser
 from flask import current_app, session
 from flask_babel import gettext as _
@@ -50,9 +49,7 @@ def get_current_time(format='%Y-%m-%d %H:%M:%S.%f %z'):
     """
     Generate the current time string in the given format.
     """
-    return datetime.utcnow().replace(
-        tzinfo=pytz.utc
-    ).strftime(format)
+    return datetime.now(timezone.utc).strftime(format)
 
 
 class IProcessDesc(metaclass=ABCMeta):
@@ -312,6 +309,8 @@ class BatchProcess:
         if self.env:
             env.update(self.env)
 
+        current_app.logger.debug(self.env)
+
         if cb is not None:
             cb(env)
         if os.name == 'nt':
@@ -479,7 +478,7 @@ class BatchProcess:
             return 0, True
 
         with open(logfile, 'rb') as f:
-            eofs = os.fstat(f.fileno()).st_size
+            eofs = os.path.getsize(logfile)
             f.seek(pos, 0)
             if pos == eofs and ecode is None:
                 completed = False
@@ -842,8 +841,10 @@ class BatchProcess:
                 isinstance(self.manager_obj.connection_params, dict) and \
                 'passfile' in self.manager_obj.connection_params and \
                     self.manager_obj.connection_params['passfile']:
-                self.env['PGPASSFILE'] = get_complete_file_path(
+                pgpasspath = get_complete_file_path(
                     self.manager_obj.connection_params['passfile'])
+                if pgpasspath is not None:
+                    self.env['PGPASSFILE'] = pgpasspath
 
             # Check for connection timeout and if it is greater than 0 then
             # set the environment variable PGCONNECT_TIMEOUT.

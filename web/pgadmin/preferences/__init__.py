@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -20,7 +20,7 @@ from flask_security import login_required
 from pgadmin.utils import PgAdminModule
 from pgadmin.utils.ajax import success_return, \
     make_response as ajax_response, internal_server_error
-from pgadmin.utils.menu import MenuItem
+from pgadmin.utils.ajax import make_json_response
 from pgadmin.utils.preferences import Preferences
 from pgadmin.utils.constants import MIMETYPE_APP_JS
 from pgadmin.browser.server_groups import ServerGroupModule as sgm
@@ -36,9 +36,6 @@ class PreferencesModule(PgAdminModule):
     And, allows the user to modify (not add/remove) as per their requirement.
     """
 
-    def get_own_stylesheets(self):
-        return []
-
     def get_own_menuitems(self):
         return {}
 
@@ -50,7 +47,9 @@ class PreferencesModule(PgAdminModule):
         return [
             'preferences.index',
             'preferences.get_by_name',
-            'preferences.get_all'
+            'preferences.get_all',
+            'preferences.get_all_cli',
+            'preferences.update_pref'
         ]
 
 
@@ -182,6 +181,28 @@ def preferences_s():
     )
 
 
+@blueprint.route("/get_all_cli", methods=["GET"], endpoint='get_all_cli')
+def get_all_cli():
+    """Fetch all preferences for caching."""
+    # Load Preferences
+    pref = Preferences.preferences()
+    res = {}
+
+    for m in pref:
+        if len(m['categories']):
+            for c in m['categories']:
+                for p in c['preferences']:
+                    p['module'] = m['name']
+                    res["{0}:{1}:{2}".format(m['label'], p['label'], c['label']
+                                             )] = "{0}:{1}:{2}".format(
+                        p['module'],c['name'],p['name'])
+
+    return ajax_response(
+        response=res,
+        status=200
+    )
+
+
 def get_data():
     """
     Get preferences data.
@@ -248,3 +269,50 @@ def save():
                             **domain)
 
     return response
+
+
+def save_pref(data):
+    """
+    Save a specific preference.
+    """
+
+    if data['name'] in ['vw_edt_tab_title_placeholder',
+                        'qt_tab_title_placeholder',
+                        'debugger_tab_title_placeholder'] \
+            and data['value'].isspace():
+        data['value'] = ''
+
+    res, msg = Preferences.save_cli(
+        data['mid'], data['category_id'], data['id'], data['user_id'],
+        data['value'])
+
+    if not res:
+        return False
+    return True
+
+
+@blueprint.route("/update", methods=["PUT"], endpoint="update_pref")
+@login_required
+def update():
+    """
+    Update a specific preference.
+    """
+    pref_data = get_data()
+    pref_data = json.loads(pref_data['pref_data'])
+
+    for data in pref_data:
+        if data['name'] in ['vw_edt_tab_title_placeholder',
+                            'qt_tab_title_placeholder',
+                            'debugger_tab_title_placeholder'] \
+                and data['value'].isspace():
+            data['value'] = ''
+
+        pref_module = Preferences.module(data['module'])
+        pref = pref_module.preference(data['name'])
+        # set user preferences
+        pref.set(data['value'])
+
+    return make_json_response(
+        data={'data': 'Success'},
+        status=200
+    )

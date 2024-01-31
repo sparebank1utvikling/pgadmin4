@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -220,6 +220,8 @@ export class PartitionsSchema extends BaseUISchema {
             amname: undefined
           };
         }
+      }, readonly: function(state) {
+        return !obj.isNew(state);
       },
     },{
       id: 'is_default', label: gettext('Default'), type: 'switch', cell:'switch',

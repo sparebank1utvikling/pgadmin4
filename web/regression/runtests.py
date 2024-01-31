@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -23,6 +23,7 @@ import threading
 import time
 import unittest
 import asyncio
+
 from selenium.webdriver.firefox.options import Options as FirefoxOptions
 
 if sys.platform == "win32":
@@ -89,9 +90,6 @@ if pgadmin_credentials and \
     os.environ['PGADMIN_SETUP_PASSWORD'] = str(pgadmin_credentials[
         'login_password'])
 
-# Execute the setup file
-exec(open("setup.py").read())
-
 # Get the config database schema version. We store this in pgadmin.model
 # as it turns out that putting it in the config files isn't a great idea
 from pgadmin.model import SCHEMA_VERSION
@@ -109,7 +107,8 @@ from logging import WARNING
 config.CONSOLE_LOG_LEVEL = WARNING
 
 # Create the app
-app = create_app()
+from pgAdmin4 import app
+app.app_context().push()
 
 app.PGADMIN_INT_KEY = ''
 app.config.update({'SESSION_COOKIE_DOMAIN': None})
@@ -497,7 +496,8 @@ def execute_test(test_module_list_passed, server_passed, driver_passed,
             server_passed['db_password'],
             server_passed['host'],
             server_passed['port'],
-            server_passed['sslmode']
+            server_passed['sslmode'],
+            max_connections=100
         )
 
         # Add the server version in server information
@@ -511,8 +511,9 @@ def execute_test(test_module_list_passed, server_passed, driver_passed,
         test_utils.create_database(server_passed, test_db_name)
 
         # Configure preferences for the test cases
-        test_utils.configure_preferences(
-            default_binary_path=server_passed['default_binary_paths'])
+        with app.app_context():
+            test_utils.configure_preferences(
+                default_binary_path=server_passed['default_binary_paths'])
 
         # Create user to run selenoid tests in parallel
         if parallel_ui_test:

@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -12,7 +12,7 @@ import _ from 'lodash';
 import {
   FormInputText, FormInputSelect, FormInputSwitch, FormInputCheckbox, FormInputColor,
   FormInputFileSelect, FormInputToggle, InputSwitch, FormInputSQL, InputSQL, FormNote, FormInputDateTimePicker, PlainString,
-  InputSelect, InputText, InputCheckbox, InputDateTimePicker, InputFileSelect, FormInputKeyboardShortcut, FormInputQueryThreshold, FormInputSelectThemes, InputRadio, FormButton
+  InputSelect, InputText, InputCheckbox, InputDateTimePicker, InputFileSelect, FormInputKeyboardShortcut, FormInputQueryThreshold, FormInputSelectThemes, InputRadio, FormButton, InputTree
 } from '../components/FormComponents';
 import Privilege from '../components/Privilege';
 import { evalFunc } from 'sources/utils';
@@ -25,7 +25,7 @@ function MappedFormControlBase({ type, value, id, onChange, className, visible, 
   const name = id;
   const onTextChange = useCallback((e) => {
     let val = e;
-    if(e && e.target) {
+    if(e?.target) {
       val = e.target.value;
     }
     onChange && onChange(val);
@@ -33,6 +33,10 @@ function MappedFormControlBase({ type, value, id, onChange, className, visible, 
 
   const onSqlChange = useCallback((changedValue) => {
     onChange && onChange(changedValue);
+  }, []);
+
+  const onTreeSelection = useCallback((selectedValues)=> {
+    onChange && onChange(selectedValues);
   }, []);
 
   if (!visible) {
@@ -89,6 +93,8 @@ function MappedFormControlBase({ type, value, id, onChange, className, visible, 
     return <FormInputSelectThemes name={name} value={value} onChange={onTextChange} {...props}/>;
   case 'button':
     return <FormButton name={name} value={value} className={className} onClick={onClick}  {...props} />;
+  case 'tree':
+    return <InputTree name={name} treeData={props.treeData} onChange={onTreeSelection} {...props}/>;
   default:
     return <PlainString value={value} {...props} />;
   }
@@ -109,7 +115,8 @@ MappedFormControlBase.propTypes = {
   noLabel: PropTypes.bool,
   onClick: PropTypes.func,
   withContainer: PropTypes.bool,
-  controlGridBasis: PropTypes.number
+  controlGridBasis: PropTypes.number,
+  treeData: PropTypes.oneOfType([PropTypes.array, PropTypes.instanceOf(Promise), PropTypes.func]),
 };
 
 /* Control mapping for grid cell view */
@@ -117,7 +124,7 @@ function MappedCellControlBase({ cell, value, id, optionsLoaded, onCellChange, v
   const name = id;
   const onTextChange = useCallback((e) => {
     let val = e;
-    if (e && e.target) {
+    if (e?.target) {
       val = e.target.value;
     }
 
@@ -126,7 +133,7 @@ function MappedCellControlBase({ cell, value, id, optionsLoaded, onCellChange, v
 
   const onRadioChange = useCallback((e) => {
     let val =e;
-    if(e && e.target) {
+    if(e?.target) {
       val = e.target.checked;
     }
     onCellChange && onCellChange(val);
@@ -205,7 +212,7 @@ const ALLOWED_PROPS_FIELD_COMMON = [
   'label', 'options', 'optionsLoaded', 'controlProps', 'schema', 'inputRef',
   'visible', 'autoFocus', 'helpMessage', 'className', 'optionsReloadBasis',
   'orientation', 'isvalidate', 'fields', 'radioType', 'hideBrowseButton', 'btnName', 'hidden',
-  'withContainer', 'controlGridBasis',
+  'withContainer', 'controlGridBasis', 'hasCheckbox', 'treeData', 'title'
 ];
 
 const ALLOWED_PROPS_FIELD_FORM = [

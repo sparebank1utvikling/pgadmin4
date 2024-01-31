@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -416,7 +416,7 @@ export function getMiscellaneousSchema(fieldOptions) {
 }
 
 export default class BackupSchema extends BaseUISchema {
-  constructor(sectionSchema, typeObjSchema, saveOptSchema, disabledOptionSchema, miscellaneousSchema, fieldOptions = {}, treeNodeInfo=[], pgBrowser=null, backupType='server') {
+  constructor(sectionSchema, typeObjSchema, saveOptSchema, disabledOptionSchema, miscellaneousSchema, fieldOptions = {}, treeNodeInfo=[], pgBrowser=null, backupType='server', objects={}) {
     super({
       file: undefined,
       format: 'custom',
@@ -430,7 +430,7 @@ export default class BackupSchema extends BaseUISchema {
       role: null,
       ...fieldOptions,
     };
-
+    this.treeData = objects?.objects;
     this.treeNodeInfo = treeNodeInfo;
     this.pgBrowser = pgBrowser;
     this.backupType = backupType;
@@ -699,6 +699,42 @@ export default class BackupSchema extends BaseUISchema {
       label: gettext('Miscellaneous'),
       group: gettext('Options'),
       schema: obj.getMiscellaneousSchema(),
+    },
+    {
+      id: 'object', label: gettext('Objects'), type: 'group',
+      visible: isVisibleForServerBackup(obj?.backupType)
+    },
+    {
+      id: 'objects',
+      label: gettext('objects'),
+      group: gettext('Objects'),
+      type: 'tree',
+      helpMessage: gettext('If Schema(s) is selected then it will take the backup of that selected schema(s) only'),
+      treeData: this.treeData,
+      visible: () => {
+        return isVisibleForServerBackup(obj?.backupType);
+      },
+      depChange: (state)=> {
+        let selectedNodeCollection = {
+          'schema': [],
+          'table': [],
+          'view': [],
+          'sequence': [],
+          'foreign table': [],
+          'materialized view': [],
+        };
+        state?.objects?.forEach((node)=> {
+          if(node.data.is_schema && !node.data?.isIndeterminate) {
+            selectedNodeCollection['schema'].push(node.data.name);
+          } else if(['table', 'view', 'materialized view', 'foreign table', 'sequence'].includes(node.data.type) &&
+              !node.data.is_collection && !selectedNodeCollection['schema'].includes(node.data.schema)) {
+            selectedNodeCollection[node.data.type].push(node.data);
+          }
+        });
+        return {'objects': selectedNodeCollection};
+      },
+      hasCheckbox: true,
+      isFullTab: true,
     }];
   }
 

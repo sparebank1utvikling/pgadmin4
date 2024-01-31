@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -130,7 +130,8 @@ def load_servers():
                 data = json.loads(j.read())
 
                 # Validate the json file and data
-                errmsg = validate_json_data(data, False)
+                errmsg = validate_json_data(
+                    data, current_user.has_role("Administrator"))
                 if errmsg is not None:
                     return internal_server_error(errmsg)
 
@@ -189,6 +190,9 @@ def save():
     status = False
     errmsg = None
     if data['type'] == 'export':
+        file_ext = os.path.splitext(data['filename'])[-1].lower()
+        if file_ext != '.json':
+            data['filename'] = data['filename'] + '.json'
         status, errmsg = \
             dump_database_servers(data['filename'], data['selected_sever_ids'])
     elif data['type'] == 'import':

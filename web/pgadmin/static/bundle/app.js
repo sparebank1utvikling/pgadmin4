@@ -2,16 +2,15 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
 
 import React from 'react';
 import ReactDOM from 'react-dom';
+import BrowserComponent from '../js/BrowserComponent';
 import MainMenuFactory from '../../browser/static/js/MainMenuFactory';
-import AppMenuBar from '../js/AppMenuBar';
-import ObjectBreadcrumbs from '../js/components/ObjectBreadcrumbs';
 import Theme from '../js/Theme';
 
 define('app', [
@@ -51,18 +50,10 @@ define('app', [
   // Create menus after all modules are initialized.
   MainMenuFactory.createMainMenus();
 
-  const menuContainerEle = document.querySelector('#main-menu-container');
-  if(menuContainerEle) {
-    ReactDOM.render(
-      <Theme>
-        <AppMenuBar />
-      </Theme>, menuContainerEle
-    );
-  }
-
   ReactDOM.render(
     <Theme>
-      <ObjectBreadcrumbs pgAdmin={pgAdmin} />
-    </Theme>, document.querySelector('#object-breadcrumbs')
+      <BrowserComponent pgAdmin={pgAdmin} />
+    </Theme>,
+    document.querySelector('#root')
   );
 });

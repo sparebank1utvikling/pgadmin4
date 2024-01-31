@@ -40,12 +40,12 @@
       "name": "Alter  parameters of subscription",
       "endpoint": "NODE-subscription.obj_id",
       "sql_endpoint": "NODE-subscription.sql_id",
+      "msql_endpoint": "NODE-subscription.msql_id",
       "data": {
           "sync": "off",
           "binary": false,
           "streaming": false,
           "disable_on_error": false,
-          "run_as_owner": false,
           "origin": "none"
       },
       "expected_sql_file": "alter_parameters.sql",

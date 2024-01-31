@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -75,6 +75,8 @@ export default class SubscriptionSchema extends BaseUISchema{
     if (host == this.node_info['node_info'].host && port == this.node_info['node_info'].port){
       state.create_slot = false;
       return true;
+    } else {
+      state.create_slot = true;
     }
     return false;
   }
@@ -96,7 +98,6 @@ export default class SubscriptionSchema extends BaseUISchema{
   }
   isRefresh(state){
     if (!state.refresh_pub || _.isUndefined(state.refresh_pub)){
-      state.copy_data_after_refresh = false;
       return true;
     }
     return false;
@@ -332,7 +333,10 @@ export default class SubscriptionSchema extends BaseUISchema{
         if (state.enabled)
           return false;
         state.refresh_pub = false;
+        state.copy_data_after_refresh = false;
         return true;
+      }, depChange: (state)=>{
+        state.copy_data_after_refresh = state.refresh_pub ? state.copy_data_after_refresh ? false : true : false;
       },
     },{
       id: 'connect', label: gettext('Connect?'),
@@ -489,43 +493,6 @@ export default class SubscriptionSchema extends BaseUISchema{
     } else {
       setError('pub', null);
     }
-
-    if (state.use_ssh_tunnel) {
-      if(isEmptyString(state.tunnel_host)) {
-        errmsg = gettext('SSH Tunnel host must be specified.');
-        setError('tunnel_host', errmsg);
-        return true;
-      } else {
-        setError('tunnel_host', null);
-      }
-
-      if(isEmptyString(state.tunnel_port)) {
-        errmsg = gettext('SSH Tunnel port must be specified.');
-        setError('tunnel_port', errmsg);
-        return true;
-      } else {
-        setError('tunnel_port', null);
-      }
-
-      if(isEmptyString(state.tunnel_username)) {
-        errmsg = gettext('SSH Tunnel username must be specified.');
-        setError('tunnel_username', errmsg);
-        return true;
-      } else {
-        setError('tunnel_username', null);
-      }
-
-      if (state.tunnel_authentication) {
-        if(isEmptyString(state.tunnel_identity_file)) {
-          errmsg = gettext('SSH Tunnel identity file must be specified.');
-          setError('tunnel_identity_file', errmsg);
-          return true;
-        } else {
-          setError('tunnel_identity_file', null);
-        }
-      }
-    }
-
 
     return false;
   }

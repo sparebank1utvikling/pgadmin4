@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -49,9 +49,6 @@ class ERDModule(PgAdminModule):
 
     def get_own_menuitems(self):
         return {}
-
-    def get_panels(self):
-        return []
 
     def get_exposed_url_endpoints(self):
         """
@@ -624,12 +621,24 @@ def sql(trans_id, sgid, sid, did):
     sql = ''
     tab_foreign_keys = []
     all_nodes = data.get('nodes', {})
+
+    table_sql = ''
     for tab_key, tab_data in all_nodes.items():
         tab_fks = tab_data.pop('foreign_key', [])
         tab_foreign_keys.extend(translate_foreign_keys(tab_fks, tab_data,
                                                        all_nodes))
-        sql += '\n\n' + helper.get_table_sql(tab_data, with_drop=with_drop)
+        table_sql += '\n\n' + helper.get_table_sql(tab_data,
+                                                   with_drop=with_drop)
 
+    if with_drop:
+        for tab_fk in tab_foreign_keys:
+            fk_sql = fkey_utils.get_delete_sql(conn, tab_fk)
+            sql += '\n\n' + fk_sql
+
+    if sql != '':
+        sql += '\n\n'
+
+    sql += table_sql
     for tab_fk in tab_foreign_keys:
         fk_sql, name = fkey_utils.get_sql(conn, tab_fk, None)
         sql += '\n\n' + fk_sql

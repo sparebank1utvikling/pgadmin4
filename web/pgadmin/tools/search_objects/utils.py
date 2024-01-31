@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -124,7 +124,7 @@ class SearchObjectsHelper:
         # Column catalog_level has values as
         # N - Not a catalog schema
         # D - Catalog schema with DB support - pg_catalog
-        # O - Catalog schema with object support only - info schema, dbo, sys
+        # O - Catalog schema with object support only - info schema, sys
         status, res = conn.execute_dict(
             self.get_sql('search.sql',
                          search_text=text.lower(), obj_type=obj_type,

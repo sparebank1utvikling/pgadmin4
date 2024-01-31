@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -186,6 +186,11 @@ class SubscriptionView(PGChildNodeView, SchemaDiffObjectCompare):
         'p': 'parallel',
         't': True,
         'f': False
+    }
+    two_phase_mapping = {
+        'p': True,
+        'e': True,
+        'd': False
     }
 
     parent_ids = [
@@ -377,6 +382,10 @@ class SubscriptionView(PGChildNodeView, SchemaDiffObjectCompare):
         if len(res['rows']) == 0:
             return False, gone(self._NOT_FOUND_PUB_INFORMATION)
 
+        if self.manager.version >= 150000:
+            res['rows'][0]['two_phase'] = \
+                self.two_phase_mapping[res['rows'][0]['two_phase']]
+
         if self.manager.version >= 160000:
             res['rows'][0]['streaming'] = \
                 self.streaming_mapping[res['rows'][0]['streaming']]
@@ -478,7 +487,7 @@ class SubscriptionView(PGChildNodeView, SchemaDiffObjectCompare):
 
             sql = render_template(
                 "/".join([self.template_path, 'get_position.sql']),
-                conn=self.conn, subname=data['name']
+                conn=self.conn, subname=data['name'], did=did
             )
 
             status, r_set = self.conn.execute_dict(sql)
@@ -786,6 +795,10 @@ class SubscriptionView(PGChildNodeView, SchemaDiffObjectCompare):
             old_data['connect'] = True
         else:
             old_data['connect'] = False
+
+        if self.manager.version >= 150000:
+            old_data['two_phase'] = \
+                self.two_phase_mapping[old_data['two_phase']]
 
         if self.manager.version >= 160000:
             old_data['streaming'] = \

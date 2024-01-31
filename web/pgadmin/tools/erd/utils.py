@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -32,15 +32,20 @@ class ERDTableView(BaseTableView, DataTypeReader):
         return DataTypeReader.get_types(self, self.conn, condition, True)
 
     @BaseTableView.check_precondition
-    def fetch_all_tables(self, did=None, sid=None):
-        status, schemas = get_schemas(self.conn, show_system_objects=False)
-        if not status:
-            return status, schemas
-
+    def fetch_all_tables(self, did=None, sid=None, scid=None):
         all_tables = []
+        schemas = {'rows': []}
+        if scid is None:
+            status, schemas = get_schemas(self.conn, show_system_objects=False)
+            if not status:
+                return status, schemas
+        else:
+            schemas['rows'].append({'oid': scid})
+
         for row in schemas['rows']:
             status, res = \
-                BaseTableView.fetch_tables(self, sid, did, row['oid'])
+                BaseTableView.fetch_tables(self, sid, did, row['oid'],
+                                           with_serial_cols=True)
             if not status:
                 return status, res
 
@@ -53,7 +58,8 @@ class ERDTableView(BaseTableView, DataTypeReader):
                                 tid=None, related={}, maxdepth=0, currdepth=0):
 
         status, res = \
-            BaseTableView.fetch_tables(self, sid, did, scid, tid=tid)
+            BaseTableView.fetch_tables(self, sid, did, scid, tid=tid,
+                                       with_serial_cols=True)
 
         if not status:
             return status, res
@@ -109,6 +115,9 @@ class ERDHelper:
         if tid is None and scid is None:
             status, res = self.table_view.fetch_all_tables(
                 did=self.did, sid=self.sid)
+        elif tid is None:
+            status, res = self.table_view.fetch_all_tables(
+                did=self.did, sid=self.sid, scid=scid)
         else:
             prefs = Preferences.module('erd')
             table_relation_depth = prefs.preference('table_relation_depth')

@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -151,6 +151,8 @@ else:
 
 if not app.PGADMIN_RUNTIME:
     app.wsgi_app = ReverseProxied(app.wsgi_app)
+
+app.run_before_app_start()
 
 
 ##########################################################################

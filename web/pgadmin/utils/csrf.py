@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 #########################################################################
@@ -41,6 +41,7 @@ class _PGCSRFProtect(CSRFProtect):
             'pgadmin.authenticate.login',
             'pgadmin.tools.erd.panel',
             'pgadmin.tools.psql.panel',
+            'pgadmin.preferences.get_all_cli',
         ]
 
         for exempt in exempt_views:

@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -153,13 +153,13 @@ export default function ListView({items, operation, ...props}) {
   }, [operation]);
 
   useEffect(()=>{
-    gridRef.current.selectCell({idx: 0, rowIdx: 0});
+    gridRef.current?.selectCell({idx: 0, rowIdx: 0});
   }, [gridRef.current?.element]);
 
   return (
     <PgReactDataGrid
       gridRef={gridRef}
-      id="files"
+      id="list"
       className={classes.grid}
       hasSelectColumn={false}
       columns={columns}

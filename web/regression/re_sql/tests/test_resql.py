@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -710,6 +710,8 @@ class ReverseEngineeredSQLTestCases(BaseTestGenerator):
             self.parent_ids['fsid'] = object_id
         elif endpoint.__contains__("NODE-role.obj"):
             object_name = object_data['rolname']
+        elif endpoint.__contains__("NODE-foreign_table"):
+            self.parent_ids['tid'] = object_id
 
         # Store object id with object name
         self.all_object_ids[object_name] = object_id
@@ -763,7 +765,7 @@ class ReverseEngineeredSQLTestCases(BaseTestGenerator):
             password = ''
             for line in resp_sql.split('\n'):
                 if 'PASSWORD' in line:
-                    found = re.search("'([\w\W]*)'", line)
+                    found = re.search(r"'([\w\W]*)'", line)
                     if found:
                         password = found.groups(0)[0]
                     break

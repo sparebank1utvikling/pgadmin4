@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -23,7 +23,7 @@ define('pgadmin.node.column', [
         node: 'column',
         label: gettext('Columns'),
         type: 'coll-column',
-        columns: ['name', 'cltype', 'description'],
+        columns: ['name', 'cltype', 'is_pk','attnotnull', 'description'],
         canDrop: SchemaChildTreeNode.isTreeItemOfChildOfSchema,
         canDropCascade: false,
       });

@@ -2,13 +2,13 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
 
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { Box, makeStyles, Tab, Tabs } from '@material-ui/core';
+import { Box, makeStyles, Tab, Tabs, Tooltip } from '@material-ui/core';
 import _ from 'lodash';
 import PropTypes from 'prop-types';
 import clsx from 'clsx';
@@ -17,7 +17,7 @@ import { MappedFormControl } from './MappedControl';
 import TabPanel from '../components/TabPanel';
 import DataGridView from './DataGridView';
 import { SCHEMA_STATE_ACTIONS, StateUtilsContext } from '.';
-import { InputSQL } from '../components/FormComponents';
+import { FormNote, InputSQL } from '../components/FormComponents';
 import gettext from 'sources/gettext';
 import { evalFunc } from 'sources/utils';
 import CustomPropTypes from '../custom_prop_types';
@@ -28,7 +28,8 @@ import FieldSetView from './FieldSetView';
 const useStyles = makeStyles((theme)=>({
   fullSpace: {
     padding: 0,
-    height: '100%'
+    height: '100%',
+    overflow: 'hidden',
   },
   controlRow: {
     marginBottom: theme.spacing(1),
@@ -39,12 +40,23 @@ const useStyles = makeStyles((theme)=>({
   nestedControl: {
     height: 'unset',
   },
+  fullControl: {
+    display: 'flex',
+    flexDirection: 'column'
+  },
   errorMargin: {
     /* Error footer space */
     paddingBottom: '36px !important',
   },
   sqlTabInput: {
     border: 0,
+  },
+  nonTabPanel: {
+    padding: 0,
+    background: 'inherit',
+  },
+  nonTabPanelContent: {
+    height: 'unset'
   }
 }));
 
@@ -187,7 +199,10 @@ export default function FormView({
           depListener.addDepListener(accessPath.concat(field.id), accessPath.concat(field.id), field.depChange, field.deferredDepChange);
         }
         (evalFunc(null, field.deps) || []).forEach((dep)=>{
+          // when dep is a string then prepend the complete accessPath
           let source = accessPath.concat(dep);
+
+          // but when dep is an array, then the intention is to provide the exact accesspath
           if(_.isArray(dep)) {
             source = dep;
           }
@@ -306,7 +321,7 @@ export default function FormView({
           firstEleID.current = field.id;
         }
 
-        const currentControl = <MappedFormControl
+        let currentControl = <MappedFormControl
           inputRef={(ele)=>{
             if(firstEleRef && firstEleID.current === field.id) {
               firstEleRef.current = ele;
@@ -343,6 +358,17 @@ export default function FormView({
             ...(evalFunc(null, field.deps) || []).map((dep)=>value[dep]),
           ]}
         />;
+
+        if(field.tooltip) {
+          currentControl = <Tooltip title={field.tooltip} aria-label={field.tooltip}>{currentControl}</Tooltip>;
+        }
+
+        if(field.isFullTab && field.helpMessage) {
+          currentControl = (<React.Fragment key={`coll-${field.id}`}>
+            <FormNote key={`note-${field.id}`} text={field.helpMessage}/>
+            {currentControl}
+          </React.Fragment>);
+        }
 
         if(field.inlineNext) {
           inlineComponents.push(React.cloneElement(currentControl, {
@@ -402,7 +428,7 @@ export default function FormView({
   if(isTabView) {
     return (
       <>
-        <Box height="100%" display="flex" flexDirection="column" className={className} ref={formRef}>
+        <Box height="100%" display="flex" flexDirection="column" className={className} ref={formRef} data-test="form-view">
           <Box>
             <Tabs
               value={tabValue}
@@ -414,7 +440,7 @@ export default function FormView({
               action={(ref)=>ref && ref.updateIndicator()}
             >
               {Object.keys(finalTabs).map((tabName)=>{
-                return <Tab key={tabName} label={tabName} />;
+                return <Tab key={tabName} label={tabName} data-test={tabName}/>;
               })}
             </Tabs>
           </Box>
@@ -422,10 +448,12 @@ export default function FormView({
             let contentClassName = [stateUtils.formErr.message ? classes.errorMargin : null];
             if(fullTabs.indexOf(tabName) == -1) {
               contentClassName.push(classes.nestedControl);
+            } else {
+              contentClassName.push(classes.fullControl);
             }
             return (
               <TabPanel key={tabName} value={tabValue} index={i} classNameRoot={clsx(tabsClassname[tabName], isNested ? classes.nestedTabPanel : null)}
-                className={clsx(contentClassName)}>
+                className={clsx(contentClassName)} data-testid={tabName}>
                 {finalTabs[tabName]}
               </TabPanel>
             );
@@ -433,15 +461,18 @@ export default function FormView({
         </Box>
       </>);
   } else {
-    let contentClassName = [stateUtils.formErr.message ? classes.errorMargin : null];
+    let contentClassName = [classes.nonTabPanelContent, stateUtils.formErr.message ? classes.errorMargin : null];
     return (
       <>
-        <Box height="100%" display="flex" flexDirection="column" className={clsx(className, contentClassName)} ref={formRef}>
-          {Object.keys(finalTabs).map((tabName)=>{
-            return (
-              <React.Fragment key={tabName}>{finalTabs[tabName]}</React.Fragment>
-            );
-          })}
+        <Box height="100%" display="flex" flexDirection="column" className={clsx(className)} ref={formRef} data-test="form-view">
+          <TabPanel value={tabValue} index={0} classNameRoot={classes.nonTabPanel}
+            className={clsx(contentClassName)}>
+            {Object.keys(finalTabs).map((tabName)=>{
+              return (
+                <React.Fragment key={tabName}>{finalTabs[tabName]}</React.Fragment>
+              );
+            })}
+          </TabPanel>
         </Box>
       </>);
   }

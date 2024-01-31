@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build:
+  run-feature-tests-epas:
     # Only run if the tests are enabled
     # TODO: Figure out a way to test for the presence of the secrets instead
     if: vars.ENABLE_EPAS_TESTS == 'true'
@@ -21,7 +21,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        pgver: [11, 12, 13, 14, 15]
+        pgver: [12, 13, 14, 15, 16]
 
     runs-on: ubuntu-latest
 
@@ -135,6 +135,11 @@ jobs:
             ]
           }
           EOF
+
+      - name: Upgrade yarn
+        run: |
+          yarn set version berry
+          yarn set version 3
 
       - name: Build the JS bundle
         run: |

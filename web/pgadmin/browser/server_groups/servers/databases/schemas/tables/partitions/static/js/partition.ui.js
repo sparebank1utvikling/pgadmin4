@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -30,8 +30,7 @@ export function getNodePartitionTableSchema(treeNodeInfo, itemNodeData, pgBrowse
     {
       relowner: ()=>getNodeListByName('role', treeNodeInfo, itemNodeData),
       schema: ()=>getNodeListByName('schema', treeNodeInfo, itemNodeData, {
-        cacheLevel: 'database',
-        cacheNode: 'database',
+        cacheLevel: 'database'
       }, (d)=>{
         // If schema name start with pg_* then we need to exclude them
         return !(d && d.label.match(/^pg_/));

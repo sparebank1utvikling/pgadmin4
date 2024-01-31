@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -204,20 +204,25 @@ export class VacuumSchema extends BaseUISchema {
       type: 'select',
       label: gettext('INDEX CLEANUP'),
       controlProps: { allowClear: false, width: '100%' },
-      options: [
-        {
-          label: gettext('AUTO'),
-          value: 'AUTO',
-        },
-        {
+      options: function () {
+        let optArray = [{
           label: gettext('ON'),
           value: 'ON',
         },
         {
           label: gettext('OFF'),
           value: 'OFF',
+        }];
+
+        if (obj?.top?.nodeInfo?.server?.version >= 140000) {
+          optArray.push({
+            label: gettext('AUTO'),
+            value: 'AUTO',
+          });
         }
-      ],
+
+        return optArray;
+      },
       disabled: function(state) {
         if (!obj.isApplicableForVacuum(state) || state.vacuum_full) {
           state.vacuum_index_cleanup = undefined;

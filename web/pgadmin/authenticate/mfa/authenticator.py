@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##############################################################################
@@ -154,7 +154,7 @@ class TOTPAuthenticator(BaseMFAuth):
 
         img = qrcode.make(uri)
         buffered = BytesIO()
-        img.save(buffered, format="JPEG")
+        img.save(buffered)
         img_base64 = base64.b64encode(buffered.getvalue())
 
         return dict(

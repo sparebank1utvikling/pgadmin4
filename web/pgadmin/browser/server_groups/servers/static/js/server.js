@@ -2,25 +2,24 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
 
 import { getNodeListById } from '../../../../static/js/node_ajax';
 import ServerSchema from './server.ui';
-import Notify from '../../../../../static/js/helpers/Notifier';
 import { showServerPassword, showChangeServerPassword, showNamedRestorePoint } from '../../../../../static/js/Dialogs/index';
 import _ from 'lodash';
 import getApiInstance, { parseApiError } from '../../../../../static/js/api_instance';
 
 define('pgadmin.node.server', [
-  'sources/gettext', 'sources/url_for', 'jquery',
+  'sources/gettext', 'sources/url_for',
   'sources/pgadmin', 'pgadmin.browser',
   'pgadmin.user_management.current_user',
   'pgadmin.authenticate.kerberos',
 ], function(
-  gettext, url_for, $, pgAdmin, pgBrowser,
+  gettext, url_for, pgAdmin, pgBrowser,
   current_user, Kerberos,
 ) {
 
@@ -41,6 +40,31 @@ define('pgadmin.node.server', [
       hasCollectiveStatistics: true,
       can_expand: function(d) {
         return d && d.connected;
+      },
+      title: function(d, action) {
+        if(action == 'create') {
+          return gettext('Register - %s', this.label);
+        } else if (action == 'copy') {
+          return gettext('Copy Server - %s', d.label);
+        }
+        return d._label??'';
+      },
+      copy: function(d) {
+        // This function serves the purpose of facilitating modifications
+        // during the server copying process.
+
+        // Changing the name of the server to "Copy of <existing name>"
+        d.name = gettext('Copy of %s', d.name);
+        // If existing server is a shared server from another user then
+        // copy this server as a local server for the current user.
+        if (d?.shared && d.user_id != current_user?.id) {
+          d.gid = null;
+          d.user_id = current_user?.id;
+          d.shared = false;
+          d.server_owner = null;
+          d.shared_username = null;
+        }
+        return d;
       },
       Init: function() {
         /* Avoid multiple registration of same menus */
@@ -130,6 +154,11 @@ define('pgadmin.node.server', [
           data: {
             data_disabled: gettext('SSH Tunnel password is not saved for selected server.'),
           },
+        }, {
+          name: 'copy_server', node: 'server', module: this,
+          applies: ['object', 'context'], callback: 'show_obj_properties',
+          label: gettext('Copy Server...'), data: {action: 'copy'},
+          priority: 4,
         }]);
 
         _.bindAll(this, 'connection_lost');
@@ -201,10 +230,12 @@ define('pgadmin.node.server', [
                 obj.generate_url(i, 'connect', d, true),
               ).then(({data: res})=> {
                 if (res.success == 1) {
-                  Notify.success(res.info);
+                  pgAdmin.Browser.notifier.success(res.info, null);
                   d = t.itemData(i);
                   t.removeIcon(i);
                   d.connected = false;
+                  // Update server tree node data after server diconnected.
+                  t.update(i,d);
 
                   // Generate the event that server is disconnected
                   pgBrowser.Events.trigger(
@@ -226,7 +257,7 @@ define('pgadmin.node.server', [
                   }
                   else {
                     try {
-                      Notify.error(res.errormsg);
+                      pgAdmin.Browser.notifier.error(res.errormsg);
                     } catch (e) {
                       console.warn(e.stack || e);
                     }
@@ -234,13 +265,13 @@ define('pgadmin.node.server', [
                   }
                 }
               }).catch(function(error) {
-                Notify.pgRespErrorNotify(error);
+                pgAdmin.Browser.notifier.pgRespErrorNotify(error);
                 t.unload(i);
               });
             };
 
             if (notify) {
-              Notify.confirm(
+              pgAdmin.Browser.notifier.confirm(
                 gettext('Disconnect from server'),
                 gettext('Are you sure you want to disconnect from the server %s?', d.label),
                 function() { disconnect(); },
@@ -293,7 +324,7 @@ define('pgadmin.node.server', [
             d = i ? t.itemData(i) : undefined;
 
           if (d) {
-            Notify.confirm(
+            pgAdmin.Browser.notifier.confirm(
               gettext('Reload server configuration'),
               gettext('Are you sure you want to reload the server configuration on %s?', d.label),
               function() {
@@ -301,13 +332,13 @@ define('pgadmin.node.server', [
                   obj.generate_url(i, 'reload', d, true),
                 ).then(({data: res})=> {
                   if (res.data.status) {
-                    Notify.success(res.data.result);
+                    pgAdmin.Browser.notifier.success(res.data.result);
                   }
                   else {
-                    Notify.error(res.data.result);
+                    pgAdmin.Browser.notifier.error(res.data.result);
                   }
                 }).catch(function(error) {
-                  Notify.pgRespErrorNotify(error);
+                  pgAdmin.Browser.notifier.pgRespErrorNotify(error);
                   t.unload(i);
                 });
               },
@@ -351,7 +382,7 @@ define('pgadmin.node.server', [
               }
               showChangeServerPassword(gettext('Change Password'), d, obj, i, is_pgpass_file_used);
             }).catch(function(error) {
-              Notify.pgRespErrorNotify(error);
+              pgAdmin.Browser.notifier.pgRespErrorNotify(error);
             });
           }
 
@@ -360,7 +391,7 @@ define('pgadmin.node.server', [
 
         on_done: function(res, t, i) {
           if (res.success == 1) {
-            Notify.success(res.info);
+            pgAdmin.Browser.notifier.success(res.info);
             t.itemData(i).wal_pause=res.data.wal_pause;
             t.deselect(i);
             // Fetch updated data from server
@@ -386,7 +417,7 @@ define('pgadmin.node.server', [
           ).then(({data: res})=> {
             obj.callbacks.on_done(res, t, i);
           }).catch(function(error) {
-            Notify.pgRespErrorNotify(error);
+            pgAdmin.Browser.notifier.pgRespErrorNotify(error);
             t.unload(i);
           });
         },
@@ -407,7 +438,7 @@ define('pgadmin.node.server', [
           ).then(({data: res})=> {
             obj.callbacks.on_done(res, t, i);
           }).catch(function(error) {
-            Notify.pgRespErrorNotify(error);
+            pgAdmin.Browser.notifier.pgRespErrorNotify(error);
             t.unload(i);
           });
         },
@@ -421,7 +452,7 @@ define('pgadmin.node.server', [
             d = i  ? t.itemData(i) : undefined;
 
           if (d) {
-            Notify.confirm(
+            pgAdmin.Browser.notifier.confirm(
               gettext('Clear saved password'),
               gettext('Are you sure you want to clear the saved password for server %s?', d.label),
               function() {
@@ -429,7 +460,7 @@ define('pgadmin.node.server', [
                   obj.generate_url(i, 'clear_saved_password' , d, true)
                 ).then(({data: res})=> {
                   if (res.success == 1) {
-                    Notify.success(res.info);
+                    pgAdmin.Browser.notifier.success(res.info);
                     t.itemData(i).is_password_saved=res.data.is_password_saved;
                     t.deselect(i);
                     setTimeout(function() {
@@ -437,10 +468,10 @@ define('pgadmin.node.server', [
                     });
                   }
                   else {
-                    Notify.error(res.info);
+                    pgAdmin.Browser.notifier.error(res.info);
                   }
                 }).catch(function(error) {
-                  Notify.pgRespErrorNotify(error);
+                  pgAdmin.Browser.notifier.pgRespErrorNotify(error);
                 });
               },
               function() { return true; }
@@ -459,7 +490,7 @@ define('pgadmin.node.server', [
             d = i  ? t.itemData(i) : undefined;
 
           if (d) {
-            Notify.confirm(
+            pgAdmin.Browser.notifier.confirm(
               gettext('Clear SSH Tunnel password'),
               gettext('Are you sure you want to clear the saved password of SSH Tunnel for server %s?', d.label),
               function() {
@@ -467,14 +498,14 @@ define('pgadmin.node.server', [
                   obj.generate_url(i, 'clear_sshtunnel_password' , d, true)
                 ).then(({data: res})=> {
                   if (res.success == 1) {
-                    Notify.success(res.info);
+                    pgAdmin.Browser.notifier.success(res.info);
                     t.itemData(i).is_tunnel_password_saved=res.data.is_tunnel_password_saved;
                   }
                   else {
-                    Notify.error(res.info);
+                    pgAdmin.Browser.notifier.error(res.info);
                   }
                 }).catch(function(error) {
-                  Notify.pgRespErrorNotify(error);
+                  pgAdmin.Browser.notifier.pgRespErrorNotify(error);
                 });
               },
               function() { return true; }
@@ -494,7 +525,9 @@ define('pgadmin.node.server', [
       },
       getSchema: (treeNodeInfo, itemNodeData)=>{
         return new ServerSchema(
-          getNodeListById(pgBrowser.Nodes['server_group'], treeNodeInfo, itemNodeData),
+          getNodeListById(pgBrowser.Nodes['server_group'], treeNodeInfo, itemNodeData, {},
+          // Filter out shared servers group, it should not be visible.
+            (server)=> !server.is_shared),
           itemNodeData.user_id,
           {
             gid: treeNodeInfo['server_group']._id,
@@ -542,7 +575,7 @@ define('pgadmin.node.server', [
               pgBrowser.Events.on(
                 'pgadmin:server:connect:cancelled', disconnect
               );
-              Notify.confirm(
+              pgAdmin.Browser.notifier.confirm(
                 gettext('Connection lost'),
                 gettext('Would you like to reconnect to the database?'),
                 function() {
@@ -565,12 +598,12 @@ define('pgadmin.node.server', [
 
     let checkSupportedVersion = function (version, info) {
       if (!_.isUndefined(version) && !_.isNull(version) && version < 100000) {
-        Notify.warning(gettext('You have connected to a server version that is older ' +
+        pgAdmin.Browser.notifier.warning(gettext('You have connected to a server version that is older ' +
           'than is supported by pgAdmin. This may cause pgAdmin to break in strange and ' +
           'unpredictable ways. Or a plague of frogs. Either way, you have been warned!') +
           '<br /><br />' + gettext('Server connected'), null);
       } else if (!_.isUndefined(info) && !_.isNull(info)) {
-        Notify.success(info);
+        pgAdmin.Browser.notifier.success(info);
       }
     };
 
@@ -588,7 +621,7 @@ define('pgadmin.node.server', [
               data.is_connecting = false;
               tree.unload(item);
               tree.addIcon(item, {icon: 'icon-shared-server-not-connected'});
-              Notify.info('Please enter the server details to connect to the server. This server is a shared server.');
+              pgAdmin.Browser.notifier.info('Please enter the server details to connect to the server. This server is a shared server.');
             } else {
               data.is_connecting = false;
               tree.unload(item);
@@ -629,11 +662,11 @@ define('pgadmin.node.server', [
               },
               function() {
                 tree.addIcon(_item, {icon: 'icon-server-not-connected'});
-                Notify.pgNotifier('error', error, 'Connection error', gettext('Connect to server.'));
+                pgAdmin.Browser.notifier.pgNotifier('error', error, 'Connection error', gettext('Connect to server.'));
               }
             );
           } else {
-            Notify.pgNotifier('error', error, errormsg, function(msg) {
+            pgAdmin.Browser.notifier.pgNotifier('error', error, errormsg, function(msg) {
               setTimeout(function() {
                 if (msg == 'CRYPTKEY_SET') {
                   connect_to_server(_node, _data, _tree, _item, _wasConnected);
@@ -672,7 +705,7 @@ define('pgadmin.node.server', [
             );
             // Generate the event that database is connected
             pgBrowser.Events.trigger(
-              'pgadmin:database:connected', _data._id, _data.db, _item, _data
+              'pgadmin:database:connected', _item, _data
             );
 
             // Load dashboard
@@ -768,7 +801,7 @@ define('pgadmin.node.server', [
             serverInfo[data._id] = _.extend({}, data);
 
             if(data.errmsg) {
-              Notify.error(data.errmsg);
+              pgAdmin.Browser.notifier.error(data.errmsg);
             }
             // Generate the event that server is connected
             pgBrowser.Events.trigger(
@@ -783,7 +816,7 @@ define('pgadmin.node.server', [
           }else{
             tree.addIcon(item, {icon: 'icon-server-not-connected'});
           }
-          Notify.pgRespErrorNotify(error);
+          pgAdmin.Browser.notifier.pgRespErrorNotify(error);
         });
     };
   }

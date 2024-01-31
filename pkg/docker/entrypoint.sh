@@ -19,13 +19,12 @@ CA_FILE = '/etc/ssl/certs/ca-certificates.crt'
 LOG_FILE = '/dev/null'
 HELP_PATH = '../../docs'
 DEFAULT_BINARY_PATHS = {
-        'pg': '/usr/local/pgsql-15',
+        'pg': '/usr/local/pgsql-16',
+        'pg-16': '/usr/local/pgsql-16',
         'pg-15': '/usr/local/pgsql-15',
         'pg-14': '/usr/local/pgsql-14',
         'pg-13': '/usr/local/pgsql-13',
-        'pg-12': '/usr/local/pgsql-12',
-        'pg-11': '/usr/local/pgsql-11',
-        'pg-10': '/usr/local/pgsql-10'
+        'pg-12': '/usr/local/pgsql-12'
 }
 EOF
 
@@ -71,9 +70,9 @@ if [ ! -f /var/lib/pgadmin/pgadmin4.db ]; then
         # When running in Desktop mode, no user is created
         # so we have to import servers anonymously
         if [ "${PGADMIN_CONFIG_SERVER_MODE}" = "False" ]; then
-            /venv/bin/python3 /pgadmin4/setup.py --load-servers "${PGADMIN_SERVER_JSON_FILE}"
+            /venv/bin/python3 /pgadmin4/setup.py load-servers "${PGADMIN_SERVER_JSON_FILE}"
         else
-            /venv/bin/python3 /pgadmin4/setup.py --load-servers "${PGADMIN_SERVER_JSON_FILE}" --user "${PGADMIN_DEFAULT_EMAIL}"
+            /venv/bin/python3 /pgadmin4/setup.py load-servers "${PGADMIN_SERVER_JSON_FILE}" --user "${PGADMIN_DEFAULT_EMAIL}"
         fi
     fi
 fi

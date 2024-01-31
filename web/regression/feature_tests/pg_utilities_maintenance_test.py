@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -79,7 +79,7 @@ class PGUtilitiesMaintenanceFeatureTest(BaseFeatureTest):
 
     def runTest(self):
         self._open_maintenance_dialogue()
-        self.page.click_modal('OK')
+        self.page.click_modal('OK', docker=True)
         self.page.wait_for_element_to_disappear(
             lambda driver: driver.find_element(
                 By.XPATH, NavMenuLocators.maintenance_operation), 10)

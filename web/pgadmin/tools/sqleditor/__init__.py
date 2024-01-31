@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -52,11 +52,14 @@ from pgadmin.tools.sqleditor.utils.macros import get_macros,\
     get_user_macros, set_macros
 from pgadmin.utils.constants import MIMETYPE_APP_JS, \
     SERVER_CONNECTION_CLOSED, ERROR_MSG_TRANS_ID_NOT_FOUND, \
-    ERROR_FETCHING_DATA, MY_STORAGE, ACCESS_DENIED_MESSAGE
+    ERROR_FETCHING_DATA, MY_STORAGE, ACCESS_DENIED_MESSAGE, \
+    ERROR_MSG_FAIL_TO_PROMOTE_QT
 from pgadmin.model import Server, ServerGroup
 from pgadmin.tools.schema_diff.node_registry import SchemaDiffRegistry
 from pgadmin.settings import get_setting
 from pgadmin.utils.preferences import Preferences
+from pgadmin.tools.sqleditor.utils.apply_explain_plan_wrapper import \
+    get_explain_query_length
 
 MODULE_NAME = 'sqleditor'
 TRANSACTION_STATUS_CHECK_FAILED = gettext("Transaction status check failed.")
@@ -83,9 +86,6 @@ class SqlEditorModule(PgAdminModule):
                      icon='fa fa-question',
                      url=url_for('help.static', filename='index.html'))
         ]}
-
-    def get_panels(self):
-        return []
 
     def get_exposed_url_endpoints(self):
         """
@@ -338,7 +338,8 @@ def panel(trans_id):
 
 
 @blueprint.route(
-    '/initialize/sqleditor/<int:trans_id>/<int:sgid>/<int:sid>/<int:did>',
+    '/initialize/sqleditor/<int:trans_id>/<int:sgid>/<int:sid>/'
+    '<int:did>',
     methods=["POST"], endpoint='initialize_sqleditor_with_did'
 )
 @blueprint.route(
@@ -376,7 +377,7 @@ def initialize_sqleditor(trans_id, sgid, sid, did=None):
     }
 
     is_error, errmsg, conn_id, version = _init_sqleditor(
-        trans_id, connect, sgid, sid, did, **kwargs)
+        trans_id, connect, sgid, sid, did, data['dbname'], **kwargs)
     if is_error:
         return errmsg
 
@@ -413,9 +414,13 @@ def _connect(conn, **kwargs):
     return status, msg, is_ask_password, user, role, password
 
 
-def _init_sqleditor(trans_id, connect, sgid, sid, did, **kwargs):
+def _init_sqleditor(trans_id, connect, sgid, sid, did, dbname=None, **kwargs):
     # Create asynchronous connection using random connection id.
-    conn_id = str(secrets.choice(range(1, 9999999)))
+    conn_id = kwargs['conn_id'] if 'conn_id' in kwargs else str(
+        secrets.choice(range(1, 9999999)))
+    if 'conn_id' in kwargs:
+        kwargs.pop('conn_id')
+
     conn_id_ac = str(secrets.choice(range(1, 9999999)))
 
     manager = get_driver(PG_DEFAULT_DRIVER).connection_manager(sid)
@@ -425,23 +430,28 @@ def _init_sqleditor(trans_id, connect, sgid, sid, did, **kwargs):
     try:
         command_obj = ObjectRegistry.get_object(
             'query_tool', conn_id=conn_id, sgid=sgid, sid=sid, did=did,
-            conn_id_ac=conn_id_ac
+            conn_id_ac=conn_id_ac, **kwargs
         )
     except Exception as e:
         current_app.logger.error(e)
         return True, internal_server_error(errormsg=str(e)), '', ''
 
+    pref = Preferences.module('sqleditor')
+
+    if kwargs.get('auto_commit', None) is None:
+        kwargs['auto_commit'] = pref.preference('auto_commit').get()
+    if kwargs.get('auto_rollback', None) is None:
+        kwargs['auto_rollback'] = pref.preference('auto_rollback').get()
+
     try:
-        conn = manager.connection(did=did, conn_id=conn_id,
+        conn = manager.connection(conn_id=conn_id,
                                   auto_reconnect=False,
                                   use_binary_placeholder=True,
-                                  array_to_string=True)
-        pref = Preferences.module('sqleditor')
+                                  array_to_string=True,
+                                  **({"database": dbname} if dbname is not None
+                                     else {"did": did}))
 
         if connect:
-            kwargs['auto_commit'] = pref.preference('auto_commit').get()
-            kwargs['auto_rollback'] = pref.preference('auto_rollback').get()
-
             status, msg, is_ask_password, user, role, password = _connect(
                 conn, **kwargs)
             if not status:
@@ -466,10 +476,13 @@ def _init_sqleditor(trans_id, connect, sgid, sid, did, **kwargs):
                         errormsg=str(msg)), '', ''
 
             if pref.preference('autocomplete_on_key_press').get():
-                conn_ac = manager.connection(did=did, conn_id=conn_id_ac,
+                conn_ac = manager.connection(conn_id=conn_id_ac,
                                              auto_reconnect=False,
                                              use_binary_placeholder=True,
-                                             array_to_string=True)
+                                             array_to_string=True,
+                                             **({"database": dbname}
+                                                if dbname is not None
+                                                else {"did": did}))
                 status, msg, is_ask_password, user, role, password = _connect(
                     conn_ac, **kwargs)
 
@@ -486,9 +499,11 @@ def _init_sqleditor(trans_id, connect, sgid, sid, did, **kwargs):
         sql_grid_data = session['gridData']
 
     # Set the value of auto commit and auto rollback specified in Preferences
-    command_obj.set_auto_commit(pref.preference('auto_commit').get())
-    command_obj.set_auto_rollback(pref.preference('auto_rollback').get())
+    command_obj.set_auto_commit(kwargs['auto_commit'])
+    command_obj.set_auto_rollback(kwargs['auto_rollback'])
 
+    # Set the value of database name, that will be used later
+    command_obj.dbname = dbname if dbname else None
     # Use pickle to store the command object which will be used
     # later by the sql grid module.
     sql_grid_data[str(trans_id)] = {
@@ -528,25 +543,28 @@ def update_sqleditor_connection(trans_id, sgid, sid, did):
                 req_args['recreate'] == '1'):
             connect = False
 
+        # Old transaction
+        _, _, _, trans_obj, session_obj = \
+            check_transaction_status(trans_id)
+
         new_trans_id = str(secrets.choice(range(1, 9999999)))
         kwargs = {
             'user': data['user'],
             'role': data['role'] if 'role' in data else None,
-            'password': data['password'] if 'password' in data else None
+            'password': data['password'] if 'password' in data else None,
+            'auto_commit': getattr(trans_obj, 'auto_commit', None),
+            'auto_rollback': getattr(trans_obj, 'auto_rollback', None),
         }
 
         is_error, errmsg, conn_id, version = _init_sqleditor(
-            new_trans_id, connect, sgid, sid, did, **kwargs)
+            new_trans_id, connect, sgid, sid, did, data['database_name'],
+            **kwargs)
 
         if is_error:
             return errmsg
         else:
             try:
-                # Check the transaction and connection status
-                status, error_msg, conn, trans_obj, session_obj = \
-                    check_transaction_status(trans_id)
-
-                status, error_msg, new_conn, new_trans_obj, new_session_obj = \
+                _, _, _, new_trans_obj, new_session_obj = \
                     check_transaction_status(new_trans_id)
 
                 new_session_obj['primary_keys'] = session_obj[
@@ -860,6 +878,11 @@ def start_query_tool(trans_id):
     )
 
     connect = 'connect' in request.args and request.args['connect'] == '1'
+    is_error, errmsg = check_and_upgrade_to_qt(trans_id, connect)
+    if is_error:
+        return make_json_response(success=0, errormsg=errmsg,
+                                  info=ERROR_MSG_FAIL_TO_PROMOTE_QT,
+                                  status=404)
 
     return StartRunningQuery(blueprint, current_app.logger).execute(
         sql, trans_id, session, connect
@@ -950,7 +973,12 @@ def poll(trans_id):
                     gettext('******* Error *******'),
                     result
                 )
-            return internal_server_error(result)
+            query_len_data = {
+                'explain_query_length':
+                get_explain_query_length(
+                    conn._Connection__async_cursor._query)
+            }
+            return internal_server_error(result, query_len_data)
         elif status == ASYNC_OK:
             status = 'Success'
             rows_affected = conn.rows_affected()
@@ -1636,7 +1664,10 @@ def cancel_transaction(trans_id):
         try:
             manager = get_driver(
                 PG_DEFAULT_DRIVER).connection_manager(trans_obj.sid)
-            conn = manager.connection(did=trans_obj.did)
+            conn = manager.connection(**({"database": trans_obj.dbname}
+                                         if trans_obj.dbname is not None
+                                         else {"did": trans_obj.did}))
+
         except Exception as e:
             return internal_server_error(errormsg=str(e))
 
@@ -1696,6 +1727,29 @@ def get_object_name(trans_id):
     return make_json_response(data={'status': status, 'result': res})
 
 
+def check_and_upgrade_to_qt(trans_id, connect):
+    is_error = False
+    errmsg = None
+
+    if 'gridData' in session and str(trans_id) in session['gridData']:
+        data = pickle.loads(session['gridData'][str(trans_id)]['command_obj'])
+        if data.object_type == 'table':
+            manager = get_driver(PG_DEFAULT_DRIVER).connection_manager(
+                data.sid)
+            default_conn = manager.connection(conn_id=data.conn_id,
+                                              did=data.did)
+            kwargs = {
+                'user': default_conn.manager.user,
+                'role': default_conn.manager.role,
+                'password': default_conn.manager.password,
+                'conn_id': data.conn_id
+            }
+            is_error, errmsg, conn_id, version = _init_sqleditor(
+                trans_id, connect, data.sgid, data.sid, data.did, **kwargs)
+
+    return is_error, errmsg
+
+
 @blueprint.route(
     '/auto_commit/<int:trans_id>',
     methods=["PUT", "POST"], endpoint='auto_commit'
@@ -1712,6 +1766,14 @@ def set_auto_commit(trans_id):
         auto_commit = json.loads(request.data)
     else:
         auto_commit = request.args or request.form
+
+    connect = 'connect' in request.args and request.args['connect'] == '1'
+
+    is_error, errmsg = check_and_upgrade_to_qt(trans_id, connect)
+    if is_error:
+        return make_json_response(success=0, errormsg=errmsg,
+                                  info=ERROR_MSG_FAIL_TO_PROMOTE_QT,
+                                  status=404)
 
     # Check the transaction and connection status
     status, error_msg, conn, trans_obj, session_obj = \
@@ -1757,6 +1819,14 @@ def set_auto_rollback(trans_id):
         auto_rollback = json.loads(request.data)
     else:
         auto_rollback = request.args or request.form
+
+    connect = 'connect' in request.args and request.args['connect'] == '1'
+
+    is_error, errmsg = check_and_upgrade_to_qt(trans_id, connect)
+    if is_error:
+        return make_json_response(success=0, errormsg=errmsg,
+                                  info=ERROR_MSG_FAIL_TO_PROMOTE_QT,
+                                  status=404)
 
     # Check the transaction and connection status
     status, error_msg, conn, trans_obj, session_obj = \
@@ -1809,6 +1879,14 @@ def auto_complete(trans_id):
     if len(data) > 0:
         full_sql = data[0]
         text_before_cursor = data[1]
+
+    connect = 'connect' in request.args and request.args['connect'] == '1'
+
+    is_error, errmsg = check_and_upgrade_to_qt(trans_id, connect)
+    if is_error:
+        return make_json_response(success=0, errormsg=errmsg,
+                                  info=ERROR_MSG_FAIL_TO_PROMOTE_QT,
+                                  status=404)
 
     # Check the transaction and connection status
     status, error_msg, conn, trans_obj, session_obj = \
@@ -2173,7 +2251,8 @@ def _check_server_connection_status(sgid, sid=None):
             }
         )
 
-    except Exception:
+    except Exception as e:
+        current_app.logger.exception(e)
         return make_json_response(
             data={
                 'status': False,
@@ -2213,12 +2292,12 @@ def get_new_connection_data(sgid=None, sid=None):
             conn = manager.connection()
             connected = conn.connected()
             server_group_data[server.servers.name].append({
-                'label': server.serialize['name'],
-                "value": server.serialize['id'],
+                'label': server.name,
+                "value": server.id,
                 'image': server_icon_and_background(connected, manager,
                                                     server),
-                'fgcolor': server.serialize['fgcolor'],
-                'bgcolor': server.serialize['bgcolor'],
+                'fgcolor': server.fgcolor,
+                'bgcolor': server.bgcolor,
                 'connected': connected})
 
         msg = "Success"
@@ -2232,7 +2311,8 @@ def get_new_connection_data(sgid=None, sid=None):
             }
         )
 
-    except Exception:
+    except Exception as e:
+        current_app.logger.exception(e)
         return make_json_response(
             data={
                 'status': False,
@@ -2312,7 +2392,8 @@ def get_new_connection_database(sgid, sid=None):
                     }
                 }
             )
-    except Exception:
+    except Exception as e:
+        current_app.logger.exception(e)
         return make_json_response(
             data={
                 'status': False,
@@ -2377,7 +2458,8 @@ def get_new_connection_user(sgid, sid=None):
                     }
                 }
             )
-    except Exception:
+    except Exception as e:
+        current_app.logger.exception(e)
         return make_json_response(
             data={
                 'status': False,
@@ -2440,7 +2522,8 @@ def get_new_connection_role(sgid, sid=None):
                     }
                 }
             )
-    except Exception:
+    except Exception as e:
+        current_app.logger.exception(e)
         return make_json_response(
             data={
                 'status': False,

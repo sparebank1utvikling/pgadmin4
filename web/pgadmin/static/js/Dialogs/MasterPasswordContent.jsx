@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -34,7 +34,7 @@ export default function MasterPasswordContent({ closeModal, onResetPassowrd, onO
 
   const onTextChange = (e, id) => {
     let val = e;
-    if (e && e.target) {
+    if (e?.target) {
       val = e.target.value;
     }
     setFormData((prev) => ({ ...prev, [id]: val }));

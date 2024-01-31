@@ -4,7 +4,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 # config.py - Core application configuration settings
@@ -49,8 +49,8 @@ APP_ICON = 'pg-icon'
 #
 
 # Application version number components
-APP_RELEASE = 7
-APP_REVISION = 6
+APP_RELEASE = 8
+APP_REVISION = 2
 
 # Application version suffix, e.g. 'beta1', 'dev'. Usually an empty string
 # for GA releases.
@@ -59,7 +59,7 @@ APP_SUFFIX = ''
 # Numeric application version for upgrade checks. Should be in the format:
 # [X]XYYZZ, where X is the release version, Y is the revision, with a leading
 # zero if needed, and Z represents the suffix, with a leading zero if needed
-APP_VERSION_INT = 70600
+APP_VERSION_INT = 80200
 
 # DO NOT CHANGE!
 # The application version string, constructed from the components
@@ -69,7 +69,7 @@ else:
     APP_VERSION = '%s.%s-%s' % (APP_RELEASE, APP_REVISION, APP_SUFFIX)
 
 # Copyright string for display in the app
-APP_COPYRIGHT = 'Copyright (C) 2013 - 2023, The pgAdmin Development Team'
+APP_COPYRIGHT = 'Copyright (C) 2013 - 2024, The pgAdmin Development Team'
 
 ##########################################################################
 # Misc stuff
@@ -230,8 +230,8 @@ PROXY_X_PREFIX_COUNT = 0
 
 # COMPRESSION
 COMPRESS_MIMETYPES = [
-    'text/html', 'text/css', 'text/xml', 'application/json',
-    'application/javascript'
+    'text/html', 'text/css', 'text/xml', 'text/javascript',
+    'application/json', 'application/javascript'
 ]
 COMPRESS_LEVEL = 9
 COMPRESS_MIN_SIZE = 500
@@ -414,10 +414,6 @@ SECURITY_EMAIL_SUBJECT_PASSWORD_CHANGE_NOTICE = \
 ##########################################################################
 # Email address validation
 ##########################################################################
-
-# flask-security-too will validate email addresses and check deliverability
-# by default. Disable the deliverability check by default, which was the old
-# behaviour in <= v5.3
 CHECK_EMAIL_DELIVERABILITY = False
 SECURITY_EMAIL_VALIDATOR_ARGS = \
     {"check_deliverability": CHECK_EMAIL_DELIVERABILITY}
@@ -477,14 +473,12 @@ STORAGE_DIR = os.path.join(DATA_DIR, 'storage')
 ##########################################################################
 DEFAULT_BINARY_PATHS = {
     "pg": "",
-    "pg-11": "",
     "pg-12": "",
     "pg-13": "",
     "pg-14": "",
     "pg-15": "",
     "pg-16": "",
     "ppas": "",
-    "ppas-11": "",
     "ppas-12": "",
     "ppas-13": "",
     "ppas-14": "",
@@ -727,6 +721,13 @@ LDAP_CERT_FILE = ''
 LDAP_KEY_FILE = ''
 
 ##########################################################################
+
+# Some flaky LDAP servers returns malformed schema. If True, no exception
+# will be raised and schema is thrown away but authentication will be done.
+# This parameter should remain False, as recommended.
+LDAP_IGNORE_MALFORMED_SCHEMA = False
+
+##########################################################################
 # Kerberos Configuration
 ##########################################################################
 
@@ -793,8 +794,9 @@ OAUTH2_CONFIG = [
         'OAUTH2_ICON': None,
         # UI button colour, ex: #0000ff
         'OAUTH2_BUTTON_COLOR': None,
-        # The additional claims to check on user ID Token. This is useful to
-        # provide additional authorization checks before allowing access.
+        # The additional claims to check on user ID Token or Userinfo response.
+        # This is useful to provide additional authorization checks
+        # before allowing access.
         # Example for GitLab: allowing all maintainers teams, and a specific
         # developers group to access pgadmin:
         # 'OAUTH2_ADDITIONAL_CLAIMS': {
@@ -812,11 +814,12 @@ OAUTH2_CONFIG = [
         #     'groups': ["0760b6cf-170e-4a14-91b3-4b78e0739963"],
         #     'wids': ["cf1c38e5-3621-4004-a7cb-879624dced7c"],
         # }
-        # Example for any key value string check:
-        # 'OAUTH2_ADDITIONAL_CLAIMS': {
-        #     'group': "0760b6cf-170e-4a14-91b3-4b78e0739963",
-        # }
         'OAUTH2_ADDITIONAL_CLAIMS': None,
+        # Set this variable to False to disable SSL certificate verification
+        # for OAuth2 provider.
+        # This may need to set False, in case of self-signed certificates.
+        # Ref: https://github.com/psf/requests/issues/6071
+        'OAUTH2_SSL_CERT_VERIFICATION': True
     }
 ]
 

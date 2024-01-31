@@ -3,15 +3,15 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
 import gettext from 'sources/gettext';
-import Notifier from '../../../../static/js/helpers/Notifier';
 import React from 'react';
 import FileManager from './components/FileManager';
 import { getBrowser } from '../../../../static/js/utils';
+import pgAdmin from 'sources/pgadmin';
 
 export default class FileManagerModule {
   static instance;
@@ -56,7 +56,7 @@ export default class FileManagerModule {
   }
 
   showInternal(params, onOK, onCancel, modalObj) {
-    const modal = modalObj || Notifier;
+    const modal = modalObj || pgAdmin.Browser.notifier;
     let title = params.dialog_title;
     if(!title) {
       if(params.dialog_type == 'create_file') {

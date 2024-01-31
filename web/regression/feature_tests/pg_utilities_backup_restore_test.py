@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -184,8 +184,8 @@ class PGUtilitiesBackupFeatureTest(BaseFeatureTest):
             "test_backup", input_keys=True, loose_focus=True)
 
         # Click on the take Backup button
-        take_bckup = self.page.find_by_xpath(
-            NavMenuLocators.backup_btn_xpath)
+        take_bckup = self.page.find_by_css_selector(
+            NavMenuLocators.backup_btn)
         click = True
         retry = 3
         while click and retry > 0:
@@ -193,8 +193,8 @@ class PGUtilitiesBackupFeatureTest(BaseFeatureTest):
                 take_bckup.click()
                 if self.page.wait_for_element_to_disappear(
                     lambda driver: driver.find_element(
-                        By.XPATH,
-                        "//*[@id='0']/div[contains(text(),'Backup')]")):
+                        By.CSS_SELECTOR,
+                        ".dock-fbox div[title^='Backup']")):
                     click = False
             except Exception:
                 retry -= 1
@@ -291,7 +291,8 @@ class PGUtilitiesBackupFeatureTest(BaseFeatureTest):
             server_types = default_binary_path.keys()
             path_already_set = True
             for serv in server_types:
-                if serv == 'pg' and server_version is not None:
+                if serv == 'pg' and server_version is not None and \
+                        default_binary_path['pg'] != '':
                     path_input = \
                         self.page.find_by_xpath(
                             "//div[span[text()='PostgreSQL {}']]"
@@ -303,7 +304,8 @@ class PGUtilitiesBackupFeatureTest(BaseFeatureTest):
                         self.page.clear_edit_box(path_input)
                         path_input.click()
                         path_input.send_keys(default_binary_path['pg'])
-                elif serv == 'ppas' and server_version is not None:
+                elif serv == 'ppas' and server_version is not None and \
+                        default_binary_path['ppas'] != '':
                     path_input = \
                         self.page.find_by_xpath(
                             "//div[span[text()='EDB Advanced Server {}']]"

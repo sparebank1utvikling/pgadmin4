@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -47,9 +47,6 @@ class SchemaDiffModule(PgAdminModule):
 
     def get_own_menuitems(self):
         return {}
-
-    def get_panels(self):
-        return []
 
     def get_exposed_url_endpoints(self):
         """

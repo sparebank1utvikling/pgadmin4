@@ -2,13 +2,13 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////////////////
 
 import gettext from 'sources/gettext';
-import Notify from '../helpers/Notifier';
+import pgAdmin from 'sources/pgadmin';
 
 export function retrieveAncestorOfTypeServer(pgBrowser, item, errorAlertTitle) {
   let serverInformation = null;
@@ -31,7 +31,7 @@ export function retrieveAncestorOfTypeServer(pgBrowser, item, errorAlertTitle) {
 
     if (databaseNode !== null) {
       if (nodeData._label.indexOf('=') >= 0) {
-        Notify.alert(
+        pgAdmin.Browser.notifier.alert(
           gettext(errorAlertTitle),
           gettext(
             'Databases with = symbols in the name cannot be backed up or restored using this utility.'
@@ -48,7 +48,7 @@ export function retrieveAncestorOfTypeServer(pgBrowser, item, errorAlertTitle) {
   }
 
   if (serverInformation === null) {
-    Notify.alert(
+    pgAdmin.Browser.notifier.alert(
       gettext(errorAlertTitle),
       gettext('Please select server or child node from the object explorer.')
     );
@@ -80,7 +80,7 @@ export function retrieveAncestorOfTypeDatabase(pgBrowser, item, errorAlertTitle)
   }
 
   if (databaseInfo === null) {
-    Notify.alert(
+    pgAdmin.Browser.notifier.alert(
       gettext(errorAlertTitle),
       gettext('Please select a database or its child node from the browser.')
     );

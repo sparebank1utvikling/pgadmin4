@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -178,6 +178,17 @@ def register_query_tool_preferences(self):
         help_str=gettext(
             'Specifies whether or not to highlight matched braces '
             'in the editor.'
+        )
+    )
+
+    self.view_edit_promotion_warning = self.preference.register(
+        'Editor', 'view_edit_promotion_warning',
+        gettext("Show View/Edit Data Promotion Warning?"),
+        'boolean', True,
+        category_label=PREF_LABEL_OPTIONS,
+        help_str=gettext(
+            'If set to True, View/Edit Data tool will show promote to '
+            'Query tool confirm dialog on query edit.'
         )
     )
 
@@ -357,7 +368,7 @@ def register_query_tool_preferences(self):
     self.preference.register(
         'keyboard_shortcuts',
         'execute_query',
-        gettext('Execute query'),
+        gettext('Execute script'),
         'keyboardshortcut',
         {
             'alt': False,

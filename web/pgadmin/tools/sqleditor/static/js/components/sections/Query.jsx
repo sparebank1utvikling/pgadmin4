@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -12,14 +12,18 @@ import { QueryToolContext, QueryToolEventsContext } from '../QueryToolComponent'
 import CodeMirror from '../../../../../../static/js/components/CodeMirror';
 import {PANELS, QUERY_TOOL_EVENTS} from '../QueryToolConstants';
 import url_for from 'sources/url_for';
-import { LayoutEventsContext, LAYOUT_EVENTS } from '../../../../../../static/js/helpers/Layout';
+import { LayoutDockerContext, LAYOUT_EVENTS } from '../../../../../../static/js/helpers/Layout';
 import ConfirmSaveContent from '../../../../../../static/js/Dialogs/ConfirmSaveContent';
 import gettext from 'sources/gettext';
 import OrigCodeMirror from 'bundled_codemirror';
-import Notifier from '../../../../../../static/js/helpers/Notifier';
 import { isMac } from '../../../../../../static/js/keyboard_shortcuts';
 import { checkTrojanSource } from '../../../../../../static/js/utils';
 import { parseApiError } from '../../../../../../static/js/api_instance';
+import { usePgAdmin } from '../../../../../../static/js/BrowserComponent';
+import ConfirmPromotionContent from '../dialogs/ConfirmPromotionContent';
+import usePreferences from '../../../../../../preferences/static/js/store';
+import { getTitle } from '../../sqleditor_title';
+
 
 const useStyles = makeStyles(()=>({
   sql: {
@@ -240,11 +244,13 @@ export default function Query() {
   const editor = React.useRef();
   const eventBus = useContext(QueryToolEventsContext);
   const queryToolCtx = useContext(QueryToolContext);
-  const layoutEvenBus = useContext(LayoutEventsContext);
+  const layoutDocker = useContext(LayoutDockerContext);
   const lastCursorPos = React.useRef();
   const lastSavedText = React.useRef('');
   const markedLine = React.useRef(0);
   const marker = React.useRef();
+  const pgAdmin = usePgAdmin();
+  const preferencesStore = usePreferences();
 
   const removeHighlightError = (cmObj)=>{
     // Remove already existing marker
@@ -252,17 +258,20 @@ export default function Query() {
     cmObj.removeLineClass(markedLine.current, 'wrap', 'CodeMirror-activeline-background');
     markedLine.current = 0;
   };
-  const highlightError = (cmObj, result)=>{
+  const highlightError = (cmObj, {errormsg: result, data})=>{
     let errorLineNo = 0,
       startMarker = 0,
       endMarker = 0,
-      selectedLineNo = 0;
+      selectedLineNo = 0,
+      origQueryLen = cmObj.getValue().length;
 
     removeHighlightError(cmObj);
 
     // In case of selection we need to find the actual line no
-    if (cmObj.getSelection().length > 0)
+    if (cmObj.getSelection().length > 0) {
       selectedLineNo = cmObj.getCursor(true).line;
+      origQueryLen = cmObj.getLine(selectedLineNo).length;
+    }
 
     // Fetch the LINE string using regex from the result
     let line = /LINE (\d+)/.exec(result),
@@ -273,6 +282,14 @@ export default function Query() {
     if (line != null && char != null) {
       errorLineNo = (parseInt(line[1]) - 1) + selectedLineNo;
       let errorCharNo = (parseInt(char[1]) - 1);
+
+      /* If explain query has been run we need to
+        calculate the character number.
+      */
+      if(data.explain_query_length) {
+        let explainQueryLen = data.explain_query_length - parseInt(char[1]);
+        errorCharNo = origQueryLen - explainQueryLen - 1;
+      }
 
       /* We need to loop through each line till the error line and
         * count the total no of character to figure out the actual
@@ -311,7 +328,7 @@ export default function Query() {
       markedLine.current = errorLineNo;
       cmObj.addLineClass(errorLineNo, 'wrap', 'CodeMirror-activeline-background');
       cmObj.focus();
-      cmObj.setCursor(errorLineNo, 0);
+      cmObj.setCursor(errorLineNo, endMarker);
     }
   };
 
@@ -328,7 +345,7 @@ export default function Query() {
         query = query || editor.current?.getValue() || '';
       }
       if(query) {
-        eventBus.fireEvent(QUERY_TOOL_EVENTS.EXECUTION_START, query, explainObject, external);
+        eventBus.fireEvent(QUERY_TOOL_EVENTS.EXECUTION_START, query, explainObject, external, null);
       }
     } else {
       eventBus.fireEvent(QUERY_TOOL_EVENTS.EXECUTION_START, null, null);
@@ -336,7 +353,7 @@ export default function Query() {
   };
 
   useEffect(()=>{
-    layoutEvenBus.registerListener(LAYOUT_EVENTS.ACTIVE, (currentTabId)=>{
+    layoutDocker.eventBus.registerListener(LAYOUT_EVENTS.ACTIVE, (currentTabId)=>{
       currentTabId == PANELS.QUERY && editor.current.focus();
     });
 
@@ -367,7 +384,7 @@ export default function Query() {
         eventBus.fireEvent(QUERY_TOOL_EVENTS.LOAD_FILE_DONE, fileName, true);
       }).catch((err)=>{
         eventBus.fireEvent(QUERY_TOOL_EVENTS.LOAD_FILE_DONE, null, false);
-        Notifier.error(parseApiError(err));
+        pgAdmin.Browser.notifier.error(parseApiError(err));
       });
     });
 
@@ -379,8 +396,7 @@ export default function Query() {
       }).then(()=>{
         lastSavedText.current = editorValue;
         eventBus.fireEvent(QUERY_TOOL_EVENTS.SAVE_FILE_DONE, fileName, true);
-        eventBus.fireEvent(QUERY_TOOL_EVENTS.QUERY_CHANGED, isDirty());
-        Notifier.success(gettext('File saved successfully.'));
+        pgAdmin.Browser.notifier.success(gettext('File saved successfully.'));
       }).catch((err)=>{
         eventBus.fireEvent(QUERY_TOOL_EVENTS.SAVE_FILE_DONE, null, false);
         eventBus.fireEvent(QUERY_TOOL_EVENTS.HANDLE_API_ERROR, err);
@@ -415,6 +431,9 @@ export default function Query() {
     });
     eventBus.registerListener(QUERY_TOOL_EVENTS.EDITOR_SET_SQL, (value, focus=true)=>{
       focus && editor.current?.focus();
+      if(!queryToolCtx.params.is_query_tool){
+        lastSavedText.current = value;
+      }
       editor.current?.setValue(value);
       if (value == '' && editor.current) {
         editor.current.state.autoCompleteList = [];
@@ -422,29 +441,6 @@ export default function Query() {
     });
     eventBus.registerListener(QUERY_TOOL_EVENTS.TRIGGER_QUERY_CHANGE, ()=>{
       change();
-    });
-    eventBus.registerListener(QUERY_TOOL_EVENTS.WARN_SAVE_TEXT_CLOSE, ()=>{
-      if(!isDirty() || !queryToolCtx.preferences?.sqleditor.prompt_save_query_changes) {
-        eventBus.fireEvent(QUERY_TOOL_EVENTS.WARN_TXN_CLOSE);
-        return;
-      }
-      queryToolCtx.modal.showModal(gettext('Save query changes?'), (closeModal)=>(
-        <ConfirmSaveContent
-          closeModal={closeModal}
-          text={gettext('The query text has changed. Do you want to save changes?')}
-          onDontSave={()=>{
-            eventBus.fireEvent(QUERY_TOOL_EVENTS.WARN_TXN_CLOSE);
-          }}
-          onSave={()=>{
-            eventBus.registerListener(QUERY_TOOL_EVENTS.SAVE_FILE_DONE, (_f, success)=>{
-              if(success) {
-                eventBus.fireEvent(QUERY_TOOL_EVENTS.WARN_TXN_CLOSE);
-              }
-            }, true);
-            eventBus.fireEvent(QUERY_TOOL_EVENTS.TRIGGER_SAVE_FILE);
-          }}
-        />
-      ));
     });
     eventBus.registerListener(QUERY_TOOL_EVENTS.TRIGGER_FORMAT_SQL, ()=>{
       let selection = true, sql = editor.current?.getSelection();
@@ -481,9 +477,36 @@ export default function Query() {
     };
     eventBus.registerListener(QUERY_TOOL_EVENTS.EDITOR_LAST_FOCUS, lastFocus);
     setTimeout(()=>{
-      editor.current.focus();
+      (queryToolCtx.params.is_query_tool|| queryToolCtx.preferences.view_edit_promotion_warning) && editor.current.focus();
     }, 250);
   }, []);
+
+  useEffect(()=>{
+    const warnSaveTextClose = ()=>{
+      if(!isDirty() || !queryToolCtx.preferences?.sqleditor.prompt_save_query_changes) {
+        eventBus.fireEvent(QUERY_TOOL_EVENTS.WARN_TXN_CLOSE);
+        return;
+      }
+      queryToolCtx.modal.showModal(gettext('Save query changes?'), (closeModal)=>(
+        <ConfirmSaveContent
+          closeModal={closeModal}
+          text={gettext('The query text has changed. Do you want to save changes?')}
+          onDontSave={()=>{
+            eventBus.fireEvent(QUERY_TOOL_EVENTS.WARN_TXN_CLOSE);
+          }}
+          onSave={()=>{
+            eventBus.registerListener(QUERY_TOOL_EVENTS.SAVE_FILE_DONE, (_f, success)=>{
+              if(success) {
+                eventBus.fireEvent(QUERY_TOOL_EVENTS.WARN_TXN_CLOSE);
+              }
+            }, true);
+            eventBus.fireEvent(QUERY_TOOL_EVENTS.TRIGGER_SAVE_FILE);
+          }}
+        />
+      ));
+    };
+    return eventBus.registerListener(QUERY_TOOL_EVENTS.WARN_SAVE_TEXT_CLOSE, warnSaveTextClose);
+  }, [queryToolCtx.preferences]);
 
   useEffect(()=>{
     registerAutocomplete(queryToolCtx.api, queryToolCtx.params.trans_id, queryToolCtx.preferences.sqleditor,
@@ -491,17 +514,67 @@ export default function Query() {
     );
   }, [queryToolCtx.params.trans_id]);
 
-  const isDirty = ()=>(queryToolCtx.params.is_query_tool && lastSavedText.current !== editor.current.getValue());
+  const isDirty = ()=>(lastSavedText.current !== editor.current.getValue());
 
-  const cursorActivity = useCallback((cmObj)=>{
+  const cursorActivity = useCallback(_.debounce((cmObj)=>{
     const c = cmObj.getCursor();
     lastCursorPos.current = c;
     eventBus.fireEvent(QUERY_TOOL_EVENTS.CURSOR_ACTIVITY, [c.line+1, c.ch+1]);
-  }, []);
+  }, 100), []);
 
   const change = useCallback(()=>{
     eventBus.fireEvent(QUERY_TOOL_EVENTS.QUERY_CHANGED, isDirty());
+
+    if(!queryToolCtx.params.is_query_tool && isDirty()){
+      if(queryToolCtx.preferences.sqleditor.view_edit_promotion_warning){
+        checkViewEditDataPromotion();
+      } else {
+        promoteToQueryTool();
+      }
+    }
   }, []);
+
+  const closePromotionWarning = (closeModal)=>{
+    if(isDirty()) {
+      editor.current.undo();
+      closeModal?.();
+    }
+  };
+
+  const checkViewEditDataPromotion = () => {
+    queryToolCtx.modal.showModal(gettext('Promote to Query Tool'), (closeModal) =>{
+      return (<ConfirmPromotionContent
+        closeModal={closeModal}
+        text={'Manually editing the query will cause this View/Edit Data tab to be converted to a Query Tool tab. You will be able to edit the query text freely, but no longer be able to use the toolbar buttons for sorting and filtering data. </br> Do you wish to continue?'}
+        onContinue={(formData)=>{
+          promoteToQueryTool();
+          let cursor = editor.current.getCursor();
+          editor.current.setValue(editor.current.getValue());
+          editor.current.setCursor(cursor);
+          editor.current.focus();
+          let title = getTitle(pgAdmin, queryToolCtx.preferences.browser, null,null,queryToolCtx.params.server_name, queryToolCtx.params.dbname, queryToolCtx.params.user);
+          queryToolCtx.updateTitle(title);
+          preferencesStore.setPreference(formData);
+          return true;
+        }}
+        onClose={()=>{
+          closePromotionWarning(closeModal);
+        }}
+      />);
+    }, {
+      onClose:()=>{
+        closePromotionWarning();
+      }
+    });
+  };
+
+  const promoteToQueryTool = () => {
+    if(!queryToolCtx.params.is_query_tool){
+      queryToolCtx.toggleQueryTool();
+      queryToolCtx.params.is_query_tool = true;
+      eventBus.fireEvent(QUERY_TOOL_EVENTS.PROMOTE_TO_QUERY_TOOL);
+    }
+  };
 
   return <CodeMirror
     currEditor={(obj)=>{
@@ -514,7 +587,6 @@ export default function Query() {
       'cursorActivity': cursorActivity,
       'change': change,
     }}
-    disabled={!queryToolCtx.params.is_query_tool}
     autocomplete={true}
   />;
 }

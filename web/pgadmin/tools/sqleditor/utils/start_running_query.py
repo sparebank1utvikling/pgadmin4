@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -66,11 +66,14 @@ class StartRunningQuery:
                 manager = get_driver(
                     PG_DEFAULT_DRIVER).connection_manager(
                     transaction_object.sid)
-                conn = manager.connection(did=transaction_object.did,
-                                          conn_id=self.connection_id,
-                                          auto_reconnect=False,
-                                          use_binary_placeholder=True,
-                                          array_to_string=True)
+                conn = manager.connection(
+                    did=transaction_object.did,
+                    conn_id=self.connection_id,
+                    auto_reconnect=False,
+                    use_binary_placeholder=True,
+                    array_to_string=True,
+                    **({"database": transaction_object.dbname} if hasattr(
+                        transaction_object,'dbname') else {}))
             except (ConnectionLost, SSHTunnelConnectionLost, CryptKeyMissing):
                 raise
             except Exception as e:
@@ -106,6 +109,7 @@ class StartRunningQuery:
             status = False
             result = gettext(
                 'Either transaction object or session object not found.')
+
         return make_json_response(
             data={
                 'status': status, 'result': result,
@@ -124,7 +128,8 @@ class StartRunningQuery:
     def __execute_query(self, conn, session_obj, sql, trans_id, trans_obj):
         # on successful connection set the connection id to the
         # transaction object
-        trans_obj.set_connection_id(self.connection_id)
+        if hasattr(trans_obj, 'set_connection_id'):
+            trans_obj.set_connection_id(self.connection_id)
 
         StartRunningQuery.save_transaction_in_session(session_obj,
                                                       trans_id, trans_obj)

@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -50,8 +50,23 @@ COVERAGE_CONFIG_FILE = os.path.join(CURRENT_PATH, ".coveragerc")
 file_name = os.path.realpath(__file__)
 
 
-def get_db_connection(db, username, password, host, port, sslmode="prefer"):
+def get_db_connection(db, username, password, host, port, sslmode="prefer",
+                      max_connections=None):
     """This function returns the connection object of psycopg"""
+    if max_connections:
+        with psycopg.connect(
+            dbname=db,
+            user=username,
+            password=password,
+            host=host,
+            port=port,
+            sslmode=sslmode,
+            autocommit=True,
+        ) as conn:
+            cur = conn.cursor()
+            cur.execute('ALTER SYSTEM SET max_connections TO 100;')
+            cur.execute('SELECT pg_reload_conf();')
+
     connection = psycopg.connect(
         dbname=db,
         user=username,
@@ -919,6 +934,25 @@ def configure_preferences(default_binary_path=None):
         cur.execute(
             update_preference_query,
             ('False', pref_confirm_on_refresh_close.pid)
+        )
+
+    # Disable object breadcrumbs for tests
+    pref_breadcrumbs_enable = \
+        browser_pref.preference('breadcrumbs_enable')
+
+    user_pref = cur.execute(
+        select_preference_query, (pref_breadcrumbs_enable.pid,)
+    )
+
+    if len(user_pref.fetchall()) == 0:
+        cur.execute(
+            insert_preferences_query,
+            (pref_breadcrumbs_enable.pid, 1, 'False')
+        )
+    else:
+        cur.execute(
+            update_preference_query,
+            ('False', pref_breadcrumbs_enable.pid)
         )
 
     conn.commit()

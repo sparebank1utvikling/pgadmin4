@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -16,7 +16,6 @@ import gettext from 'sources/gettext';
 import url_for from 'sources/url_for';
 import Loader from 'sources/components/Loader';
 import clsx from 'clsx';
-import Notify from '../../../../static/js/helpers/Notifier';
 import getApiInstance, { parseApiError } from '../../../../static/js/api_instance';
 import { PrimaryButton, PgIconButton } from '../../../../static/js/components/Buttons';
 import { useModalStyles } from '../../../../static/js/helpers/ModalProvider';
@@ -176,14 +175,14 @@ const getCollNode = (node_type)=> {
  * Sample path required by tree locator
  * Normal object  - server_group/1.server/3.coll-database/3.database/13258.coll-schema/13258.schema/2200.coll-table/2200.table/41773
  * pg_catalog schema - server_group/1.server/3.coll-database/3.database/13258.coll-catalog/13258.catalog/11.coll-table/11.table/2600
- * Information Schema, dbo, sys:
+ * Information Schema, sys:
  *  server_group/1.server/3.coll-database/3.database/13258.coll-catalog/13258.catalog/12967.coll-catalog_object/12967.catalog_object/13204
  *  server_group/1.server/11.coll-database/11.database/13258.coll-catalog/13258.catalog/12967.coll-catalog_object/12967.catalog_object/12997.coll-catalog_object_column/12997.catalog_object_column/13
  *
  * Column catalog_level has values as
  * N - Not a catalog schema
  * D - Catalog schema with DB support - pg_catalog
- * O - Catalog schema with object support only - info schema, dbo, sys
+ * O - Catalog schema with object support only - info schema, sys
  */
 const translateSearchObjectsPath = (nodeData, path, catalog_level)=> {
   if (path === null) {
@@ -353,7 +352,7 @@ export default function SearchObjects({nodeData}) {
       })
       .catch((err)=>{
         setLoaderText(null);
-        Notify.error(parseApiError(err));
+        pgAdmin.Browser.notifier.error(parseApiError(err));
       });
   };
 
@@ -381,11 +380,11 @@ export default function SearchObjects({nodeData}) {
             resolve(typeOpt);
           })
           .catch((err)=>{
-            Notify.error(parseApiError(err));
+            pgAdmin.Browser.notifier.error(parseApiError(err));
             reject(err);
           });
       } catch (error) {
-        Notify.error(parseApiError(error));
+        pgAdmin.Browser.notifier.error(parseApiError(error));
         reject(error);
       }
     });

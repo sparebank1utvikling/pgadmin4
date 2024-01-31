@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -92,7 +92,7 @@ const useStyles = makeStyles((theme) => ({
   pgTableHeader: {
     display: 'flex',
     background: theme.palette.background.default,
-    padding: '8px',
+    padding: '8px 8px 4px',
   },
   tableRowContent:{
     display: 'flex',
@@ -113,7 +113,7 @@ const useStyles = makeStyles((theme) => ({
     ...theme.mixins.panelBorder.right,
     position: 'relative',
     overflow: 'hidden',
-    height: '35px',
+    height: '34px',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
     backgroundColor: theme.otherVars.tableBg,
@@ -185,7 +185,7 @@ const useStyles = makeStyles((theme) => ({
 }));
 
 const IndeterminateCheckbox = React.forwardRef(
-  ({ indeterminate, ...rest }, ref) => {
+  ({ indeterminate, label, ...rest }, ref) => {
     const defaultRef = React.useRef();
     const resolvedRef = ref || defaultRef;
 
@@ -197,6 +197,7 @@ const IndeterminateCheckbox = React.forwardRef(
         <Checkbox
           color="primary"
           ref={resolvedRef} {...rest}
+          inputProps={{'aria-label': label}}
         />
       </>
     );
@@ -210,9 +211,10 @@ IndeterminateCheckbox.propTypes = {
   rest: PropTypes.func,
   getToggleAllRowsSelectedProps: PropTypes.func,
   row: PropTypes.object,
+  label: PropTypes.string,
 };
 
-const ROW_HEIGHT = 35;
+const ROW_HEIGHT = 34;
 
 function SortIcon ({column}) {
   if (column.isSorted) {
@@ -405,6 +407,7 @@ export default function PgTable({ columns, data, isSelectRow, caveTable=true, sc
                     }
                     onChange={modifiedOnChange}
                     checked={checked}
+                    label={gettext('Select All Rows')}
                     />
                   </div>
                 );},
@@ -414,6 +417,7 @@ export default function PgTable({ columns, data, isSelectRow, caveTable=true, sc
                 <div className={classes.selectCell}>
                   <IndeterminateCheckbox {...row.getToggleRowSelectedProps()}
                     disabled={!_.isUndefined(row.original.canDrop) ? !(row.original.canDrop) : false}
+                    label={gettext('Select Row')}
                   />
                 </div>
               ),
@@ -465,7 +469,8 @@ export default function PgTable({ columns, data, isSelectRow, caveTable=true, sc
         {props.CustomHeader && (<Box className={classes.customHeader}> <props.CustomHeader /></Box>)}
         <Box marginLeft="auto">
           <InputText
-            placeholder={'Search'}
+            placeholder={gettext('Search')}
+            controlProps={{title: gettext('Search')}}
             className={classes.searchInput}
             value={searchVal}
             onChange={(val) => {
@@ -519,7 +524,7 @@ export default function PgTable({ columns, data, isSelectRow, caveTable=true, sc
                     <VariableSizeList
                       ref={tableRef}
                       className={classes.fixedSizeList}
-                      height={height}
+                      height={isNaN(height) ? 100 : height}
                       itemCount={rows.length}
                       itemSize={getRowHeight}
                       itemData={{rows, prepareRow, setRowHeight}}

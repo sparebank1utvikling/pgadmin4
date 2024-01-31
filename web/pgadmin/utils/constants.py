@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -50,6 +50,9 @@ DATATYPE_TIMESTAMP_WITHOUT_TIMEZONE = 'timestamp without time zone'
 ERROR_MSG_TRANS_ID_NOT_FOUND = gettext(
     'Transaction ID not found in the session.')
 
+ERROR_MSG_FAIL_TO_PROMOTE_QT = gettext('FAIL TO PROMOTE VIEW/EDIT DATA '
+                                       'TO QUERY TOOL')
+
 # Role module constant
 ERROR_FETCHING_ROLE_INFORMATION = gettext(
     'Error fetching role information from the database server.')
@@ -71,9 +74,6 @@ SUPPORTED_AUTH_SOURCES = [INTERNAL,
 
 BINARY_PATHS = {
     "as_bin_paths": [
-        {"version": "110000", "next_major_version": "120000",
-         "serverType": gettext("EDB Advanced Server 11"), "binaryPath": None,
-         "isDefault": False},
         {"version": "120000", "next_major_version": "130000",
          "serverType": gettext("EDB Advanced Server 12"), "binaryPath": None,
          "isDefault": False},
@@ -91,9 +91,6 @@ BINARY_PATHS = {
          "isDefault": False}
     ],
     "pg_bin_paths": [
-        {"version": "110000", "next_major_version": "120000",
-         "serverType": gettext("PostgreSQL 11"), "binaryPath": None,
-         "isDefault": False},
         {"version": "120000", "next_major_version": "130000",
          "serverType": gettext("PostgreSQL 12"), "binaryPath": None,
          "isDefault": False},

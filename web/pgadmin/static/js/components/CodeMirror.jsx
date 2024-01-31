@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -12,7 +12,6 @@ import OrigCodeMirror from 'bundled_codemirror';
 import {useOnScreen} from 'sources/custom_hooks';
 import PropTypes from 'prop-types';
 import CustomPropTypes from '../custom_prop_types';
-import pgWindow from 'sources/window';
 import gettext from 'sources/gettext';
 import { Box, InputAdornment, makeStyles } from '@material-ui/core';
 import clsx from 'clsx';
@@ -29,6 +28,7 @@ import { isMac } from '../keyboard_shortcuts';
 import { checkTrojanSource } from '../utils';
 import { copyToClipboard } from '../clipboard';
 import { useDelayedCaller } from '../../../static/js/custom_hooks';
+import usePreferences from '../../../preferences/static/js/store';
 
 const useStyles = makeStyles((theme)=>({
   root: {
@@ -259,6 +259,10 @@ export function FindDialog({editor, show, replace, onClose, selFindVal}) {
         inputRef={(ele)=>{findInputRef.current = ele;}}
         onChange={(value)=>setFindVal(value)}
         onKeyPress={onFindEnter}
+        placeholder={gettext('Find text')}
+        controlProps={{
+          title: gettext('Find text')
+        }}
         endAdornment={
           <InputAdornment position="end">
             <PgIconButton data-test="case" title="Match case" icon={<FormatCaseIcon />} size="xs" noBorder
@@ -273,6 +277,10 @@ export function FindDialog({editor, show, replace, onClose, selFindVal}) {
         className={classes.marginTop}
         onChange={(value)=>setReplaceVal(value)}
         onKeyPress={onReplaceEnter}
+        placeholder={gettext('Replace value')}
+        controlProps={{
+          title: gettext('Replace value')
+        }}
       />}
 
       <Box display="flex" className={classes.marginTop}>
@@ -374,7 +382,7 @@ async function handlePaste(_editor, e) {
 }
 
 /* React wrapper for CodeMirror */
-export default function CodeMirror({currEditor, name, value, options, events, readonly, disabled, className, autocomplete=false, gutters=['CodeMirror-linenumbers', 'CodeMirror-foldgutter'], showCopyBtn=false}) {
+export default function CodeMirror({currEditor, name, value, options, events, readonly, disabled, className, autocomplete=false, gutters=['CodeMirror-linenumbers', 'CodeMirror-foldgutter'], showCopyBtn=false, cid, helpid}) {
   const taRef = useRef();
   const editor = useRef();
   const cmWrapper = useRef();
@@ -382,6 +390,7 @@ export default function CodeMirror({currEditor, name, value, options, events, re
   const classes = useStyles();
   const [[showFind, isReplace], setShowFind] = useState([false, false]);
   const [showCopy, setShowCopy] = useState(false);
+  const preferencesStore = usePreferences();
   const defaultOptions = useMemo(()=>{
     let goLeftKey = 'Ctrl-Alt-Left',
       goRightKey = 'Ctrl-Alt-Right',
@@ -464,55 +473,46 @@ export default function CodeMirror({currEditor, name, value, options, events, re
       editor.current.on(eventName, events[eventName]);
     });
 
-    // Register keyup event if autocomplete is true
-    let pref = pgWindow?.pgAdmin?.Browser?.get_preferences_for_module('sqleditor') || {};
-    if (autocomplete && pref.autocomplete_on_key_press) {
-      editor.current.on('keyup', (cm, event)=>{
-        if (!cm.state.completionActive && (event.key == 'Backspace' || /^[ -~]{1}$/.test(event.key))) {
-          OrigCodeMirror.commands.autocomplete(cm, null, {completeSingle: false});
-        }
-      });
-    }
-
     editor.current.on('drop', handleDrop);
     editor.current.on('paste', handlePaste);
-    initPreferences();
     return ()=>{
       editor.current?.toTextArea();
     };
   }, []);
 
-
-
-  const initPreferences = ()=>{
-    reflectPreferences();
-    pgWindow?.pgAdmin?.Browser?.onPreferencesChange('sqleditor', function() {
-      reflectPreferences();
-    });
+  const autocompKeyup = (cm, event)=>{
+    if (!cm.state.completionActive && (event.key == 'Backspace' || /^[ -~]{1}$/.test(event.key))) {
+      OrigCodeMirror.commands.autocomplete(cm, null, {completeSingle: false});
+    }
   };
 
-  const reflectPreferences = ()=>{
-    let pref = pgWindow?.pgAdmin?.Browser?.get_preferences_for_module('sqleditor') || {};
-    let wrapEle = editor?.current.getWrapperElement();
+  useEffect(()=>{
+    let pref = preferencesStore.getPreferencesForModule('sqleditor');
+    let wrapEle = editor.current?.getWrapperElement();
     wrapEle && (wrapEle.style.fontSize = calcFontSize(pref.sql_font_size));
 
-    if(pref.plain_editor_mode) {
-      editor?.current.setOption('mode', 'text/plain');
-      /* Although not required, setting explicitly as codemirror will remove code folding only on next edit */
-      editor?.current.setOption('foldGutter', false);
-    } else {
-      editor?.current.setOption('mode', 'text/x-pgsql');
-      editor?.current.setOption('foldGutter', pref.code_folding);
+    // Register keyup event if autocomplete is true
+    if (autocomplete && pref.autocomplete_on_key_press) {
+      editor.current.on('keyup', autocompKeyup);
     }
 
-    editor?.current.setOption('indentWithTabs', !pref.use_spaces);
-    editor?.current.setOption('indentUnit', pref.tab_size);
-    editor?.current.setOption('tabSize', pref.tab_size);
-    editor?.current.setOption('lineWrapping', pref.wrap_code);
-    editor?.current.setOption('autoCloseBrackets', pref.insert_pair_brackets);
-    editor?.current.setOption('matchBrackets', pref.brace_matching);
-    editor?.current.refresh();
-  };
+    if(pref.plain_editor_mode) {
+      editor.current?.setOption('mode', 'text/plain');
+      /* Although not required, setting explicitly as codemirror will remove code folding only on next edit */
+      editor.current?.setOption('foldGutter', false);
+    } else {
+      editor.current?.setOption('mode', 'text/x-pgsql');
+      editor.current?.setOption('foldGutter', pref.code_folding);
+    }
+
+    editor.current?.setOption('indentWithTabs', !pref.use_spaces);
+    editor.current?.setOption('indentUnit', pref.tab_size);
+    editor.current?.setOption('tabSize', pref.tab_size);
+    editor.current?.setOption('lineWrapping', pref.wrap_code);
+    editor.current?.setOption('autoCloseBrackets', pref.insert_pair_brackets);
+    editor.current?.setOption('matchBrackets', pref.brace_matching);
+    editor.current?.refresh();
+  }, [preferencesStore]);
 
   useEffect(()=>{
     if(editor.current) {
@@ -562,7 +562,9 @@ export default function CodeMirror({currEditor, name, value, options, events, re
     >
       <FindDialog editor={editor.current} show={showFind} replace={isReplace} onClose={closeFind} selFindVal={editor.current?.getSelection() && editor.current.getSelection().length > 0 ? editor.current.getSelection() : ''}/>
       <CopyButton editor={editor.current} show={showCopy} copyText={value}></CopyButton>
-      <textarea ref={taRef} name={name} />
+      <textarea ref={taRef} name={name} title={gettext('SQL editor')}
+        id={cid} aria-describedby={helpid} value={value??''} onChange={()=>{/* dummy */}}
+      />
     </div>
   );
 }
@@ -580,4 +582,6 @@ CodeMirror.propTypes = {
   autocomplete: PropTypes.bool,
   gutters: PropTypes.array,
   showCopyBtn: PropTypes.bool,
+  cid: PropTypes.string,
+  helpid: PropTypes.string,
 };

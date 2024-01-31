@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -19,7 +19,6 @@ import Theme from 'sources/Theme';
 import clsx from 'clsx';
 import PropTypes from 'prop-types';
 import { Box } from '@material-ui/core';
-import { LayoutHelper } from '../../../../../../static/js/helpers/Layout';
 import { PANELS } from '../QueryToolConstants';
 import { QueryToolContext } from '../QueryToolComponent';
 
@@ -377,13 +376,12 @@ export function GeometryViewer({rows, columns, column}) {
   const contentRef = React.useRef();
   const data = parseData(rows, columns, column);
   const queryToolCtx = React.useContext(QueryToolContext);
-  const crs = data.selectedSRID === 4326 ? CRS.EPSG3857 : CRS.Simple;
 
   useEffect(()=>{
     let timeoutId;
     const contentResizeObserver = new ResizeObserver(()=>{
       clearTimeout(timeoutId);
-      if(LayoutHelper.isTabVisible(queryToolCtx.docker, PANELS.GEOMETRY)) {
+      if(queryToolCtx.docker.isTabVisible(PANELS.GEOMETRY)) {
         timeoutId = setTimeout(function () {
           mapRef.current?.invalidateSize();
         }, 100);
@@ -392,10 +390,11 @@ export function GeometryViewer({rows, columns, column}) {
     contentResizeObserver.observe(contentRef.current);
   }, []);
 
+  // Dyanmic CRS is not supported. Use srid as key and recreate the map on change
   return (
-    <Box ref={contentRef} width="100%" height="100%">
+    <Box ref={contentRef} width="100%" height="100%" key={data.selectedSRID}>
       <MapContainer
-        crs={crs}
+        crs={data.selectedSRID === 4326 ? CRS.EPSG3857 : CRS.Simple}
         zoom={2} center={[20, 100]}
         preferCanvas={true}
         className={classes.mapContainer}

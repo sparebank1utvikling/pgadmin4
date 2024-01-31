@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -34,7 +34,8 @@ import PropTypes from 'prop-types';
 import CustomPropTypes from '../../../../../../static/js/custom_prop_types';
 import ConfirmTransactionContent from '../dialogs/ConfirmTransactionContent';
 import { isMac } from '../../../../../../static/js/keyboard_shortcuts';
-import { LayoutHelper } from '../../../../../../static/js/helpers/Layout';
+import { LayoutDocker } from '../../../../../../static/js/helpers/Layout';
+import CloseRunningDialog from '../dialogs/CloseRunningDialog';
 
 const useStyles = makeStyles((theme)=>({
   root: {
@@ -255,6 +256,9 @@ export function MainToolBar({containerRef, onFilterClick, onManageMacros}) {
     eventBus.registerListener(QUERY_TOOL_EVENTS.LOAD_FILE_DONE, ()=>{
       setDisableButton('save', true);
     });
+    eventBus.registerListener(QUERY_TOOL_EVENTS.SAVE_FILE_DONE, ()=>{
+      setDisableButton('save', true);
+    });
     eventBus.registerListener(QUERY_TOOL_EVENTS.DATAGRID_CHANGED, (isDirty)=>{
       setDisableButton('save-data', !isDirty);
     });
@@ -268,6 +272,17 @@ export function MainToolBar({containerRef, onFilterClick, onManageMacros}) {
     eventBus.registerListener(QUERY_TOOL_EVENTS.SET_LIMIT_VALUE, (l)=>{
       setLimit(l);
     });
+
+    eventBus.registerListener(QUERY_TOOL_EVENTS.PROMOTE_TO_QUERY_TOOL, ()=>{
+      setDisableButton('filter', true);
+      setHighlightFilter(false);
+      setDisableButton('limit', true);
+
+      setDisableButton('execute', false);
+      setDisableButton('execute-options', false);
+    });
+
+
   }, []);
 
   useEffect(()=>{
@@ -288,8 +303,22 @@ export function MainToolBar({containerRef, onFilterClick, onManageMacros}) {
   };
   const warnTxnClose = ()=>{
     if(!isInTxn() || !queryToolCtx.preferences?.sqleditor.prompt_commit_transaction) {
-      eventBus.fireEvent(QUERY_TOOL_EVENTS.FORCE_CLOSE_PANEL);
-      return;
+      /* This will show Close query tool dialog if there is any query running and transaction is active i.e queryToolConnCtx.connectionStatus is 1 */
+      if(queryToolConnCtx.connectionStatus==CONNECTION_STATUS.TRANSACTION_STATUS_ACTIVE){
+        queryToolCtx.modal.showModal(gettext('Close query tool?'), (closeModal)=>(
+          <CloseRunningDialog
+            closeModal={closeModal}
+            text={gettext('There is an active query running currently. Are you sure you want to close?')}
+            onYes={()=>{
+              eventBus.fireEvent(QUERY_TOOL_EVENTS.FORCE_CLOSE_PANEL);
+            }}
+          />
+        ));
+        return;
+      } else {
+        eventBus.fireEvent(QUERY_TOOL_EVENTS.FORCE_CLOSE_PANEL);
+        return;
+      }
     }
     queryToolCtx.modal.showModal(gettext('Commit transaction?'), (closeModal)=>(
       <ConfirmTransactionContent
@@ -393,19 +422,19 @@ export function MainToolBar({containerRef, onFilterClick, onManageMacros}) {
     {
       shortcut: queryToolPref.execute_query,
       options: {
-        callback: ()=>{!buttonsDisabled['execute']?executeQuery():null;}
+        callback: ()=>{!buttonsDisabled['execute']&&executeQuery();}
       }
     },
     {
       shortcut: queryToolPref.explain_query,
       options: {
-        callback: (e)=>{e.preventDefault(); !buttonsDisabled['explain']?explain():null;}
+        callback: (e)=>{e.preventDefault(); !buttonsDisabled['explain']&&explain();}
       }
     },
     {
       shortcut: queryToolPref.explain_analyze_query,
       options: {
-        callback: ()=>{!buttonsDisabled['explain_analyse']?explainAnalyse():null;}
+        callback: ()=>{!buttonsDisabled['explain_analyse']&&explainAnalyse();}
       }
     },
     {
@@ -465,7 +494,7 @@ export function MainToolBar({containerRef, onFilterClick, onManageMacros}) {
       shortcut: queryToolPref.move_previous,
       options: {
         callback: ()=>{
-          LayoutHelper.moveTo('left');
+          LayoutDocker.moveTo('left');
         }
       }
     },
@@ -473,7 +502,7 @@ export function MainToolBar({containerRef, onFilterClick, onManageMacros}) {
       shortcut: queryToolPref.move_next,
       options: {
         callback: ()=>{
-          LayoutHelper.moveTo('right');
+          LayoutDocker.moveTo('right');
         }
       }
     },
@@ -481,7 +510,7 @@ export function MainToolBar({containerRef, onFilterClick, onManageMacros}) {
       shortcut: queryToolPref.switch_panel,
       options: {
         callback: ()=>{
-          LayoutHelper.switchPanel(queryToolCtx.docker);
+          LayoutDocker.switchPanel(queryToolCtx.docker);
         }
       }
     },
@@ -522,7 +551,7 @@ export function MainToolBar({containerRef, onFilterClick, onManageMacros}) {
         <PgButtonGroup size="small">
           <PgIconButton title={gettext('Cancel query')} icon={<StopRoundedIcon style={{height: 'unset'}} />}
             onClick={cancelQuery} disabled={buttonsDisabled['cancel']} accesskey={shortcut_key(queryToolPref.btn_cancel_query)} />
-          <PgIconButton title={gettext('Execute/Refresh')} icon={<PlayArrowRoundedIcon style={{height: 'unset'}} />}
+          <PgIconButton title={gettext('Execute script')} icon={<PlayArrowRoundedIcon style={{height: 'unset'}} />}
             onClick={executeQuery} disabled={buttonsDisabled['execute']} shortcut={queryToolPref.execute_query}/>
           <PgIconButton title={gettext('Execute options')} icon={<KeyboardArrowDownIcon />} splitButton
             name="menu-autocommit" ref={autoCommitMenuRef} accesskey={shortcut_key(queryToolPref.btn_delete_row)}

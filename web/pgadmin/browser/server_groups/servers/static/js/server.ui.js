@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -36,6 +36,7 @@ export default class ServerSchema extends BaseUISchema {
       passexec: undefined,
       passexec_expiration: undefined,
       service: undefined,
+      shared_username: '',
       use_ssh_tunnel: false,
       tunnel_host: undefined,
       tunnel_port: 22,
@@ -43,6 +44,7 @@ export default class ServerSchema extends BaseUISchema {
       tunnel_identity_file: undefined,
       tunnel_password: undefined,
       tunnel_authentication: false,
+      tunnel_keep_alive: 0,
       save_tunnel_password: false,
       connection_string: undefined,
       connection_params: [
@@ -128,6 +130,33 @@ export default class ServerSchema extends BaseUISchema {
           return !obj.isNew(state) && serverOwner != current_user.id;
         }, visible: function(){
           return current_user.is_admin && pgAdmin.server_mode == 'True';
+        },
+      },
+      {
+        id: 'shared_username', label: gettext('Shared Username'), type: 'text',
+        controlProps: { maxLength: 64},
+        mode: ['properties', 'create', 'edit'], deps: ['shared', 'username'],
+        readonly: (s)=>{
+          return !(!this.origData.shared && s.shared);
+        }, visible: ()=>{
+          return current_user.is_admin && pgAdmin.server_mode == 'True';
+        },
+        depChange: (state, source, _topState, actionObj)=>{
+          let ret = {};
+          if(this.origData.shared) {
+            return ret;
+          }
+          if(source == 'username' && actionObj.oldState.username == state.shared_username) {
+            ret['shared_username'] = state.username;
+          }
+          if(source == 'shared') {
+            if(state.shared) {
+              ret['shared_username'] = state.username;
+            } else {
+              ret['shared_username'] = '';
+            }
+          }
+          return ret;
         },
       },
       {
@@ -300,6 +329,15 @@ export default class ServerSchema extends BaseUISchema {
         },
       },
       {
+        id: 'tunnel_keep_alive', label: gettext('Keep alive (seconds)'),
+        type: 'int', group: gettext('SSH Tunnel'), min: 0,
+        mode: ['properties', 'edit', 'create'], deps: ['use_ssh_tunnel'],
+        disabled: function(state) {
+          return !state.use_ssh_tunnel;
+        },
+        readonly: obj.isConnected,
+      },
+      {
         id: 'db_res', label: gettext('DB restriction'), type: 'select', group: gettext('Advanced'),
         options: [],
         mode: ['properties', 'edit', 'create'], readonly: obj.isConnected, controlProps: {
@@ -307,7 +345,7 @@ export default class ServerSchema extends BaseUISchema {
       },
       {
         id: 'passexec_cmd', label: gettext('Password exec command'), type: 'text',
-        group: gettext('Advanced'),
+        group: gettext('Advanced'), controlProps: {maxLength: null},
         mode: ['properties', 'edit', 'create'],
         disabled: pgAdmin.server_mode == 'True',
       },
@@ -315,15 +353,30 @@ export default class ServerSchema extends BaseUISchema {
         id: 'passexec_expiration', label: gettext('Password exec expiration (seconds)'), type: 'int',
         group: gettext('Advanced'),
         mode: ['properties', 'edit', 'create'],
-        visible: function(state) {
-          return !_.isEmpty(state.passexec_cmd);
+        disabled: function(state) {
+          return isEmptyString(state.passexec_cmd);
         },
+      },
+      {
+        id: 'prepare_threshold', label: gettext('Prepare threshold'), type: 'int',
+        group: gettext('Advanced'),
+        mode: ['properties', 'edit', 'create'],
+        helpMessageMode: ['edit', 'create'],
+        helpMessage: gettext('If it is set to 0, every query is prepared the first time it is executed. If it is set to blank, prepared statements are disabled on the connection.')
       }
     ];
   }
 
   validate(state, setError) {
     let errmsg = null;
+
+    if(isEmptyString(state.gid)) {
+      errmsg = gettext('Server group must be specified.');
+      setError('gid', errmsg);
+      return true;
+    } else {
+      setError('gid', null);
+    }
 
     if (isEmptyString(state.service)) {
       errmsg = gettext('Either Host name or Service must be specified.');
@@ -400,6 +453,14 @@ export default class ServerSchema extends BaseUISchema {
         } else {
           setError('tunnel_identity_file', null);
         }
+      }
+
+      if(isEmptyString(state.tunnel_keep_alive)) {
+        errmsg = gettext('Keep alive must be specified. Specify 0 for no keep alive.');
+        setError('tunnel_keep_alive', errmsg);
+        return true;
+      } else {
+        setError('tunnel_keep_alive', null);
       }
     }
     return false;
@@ -490,6 +551,10 @@ export default class ServerSchema extends BaseUISchema {
       'vartype': 'enum',
       'enumvals': [gettext('any'), gettext('read-write'), gettext('read-only'),
         gettext('primary'), gettext('standby'), gettext('prefer-standby')]
+    }, {
+      'value': 'load_balance_hosts', 'label': gettext('Load balance hosts'),
+      'vartype': 'enum', 'min_server_version': '16',
+      'enumvals': [gettext('disable'), gettext('random')]
     }];
   }
 }

@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -14,12 +14,6 @@ from pgadmin.utils.constants import PREF_LABEL_DISPLAY,\
     PREF_LABEL_BREADCRUMBS
 from flask import current_app
 import config
-
-LOCK_LAYOUT_LEVEL = {
-    'PREVENT_DOCKING': 'docking',
-    'FULL': 'full',
-    'NONE': 'none'
-}
 
 
 def register_browser_preferences(self):
@@ -94,21 +88,6 @@ def register_browser_preferences(self):
         help_str=gettext(
             'If a treeview node is expanded and has only a single '
             'child, automatically expand the child node as well.'
-        )
-    )
-
-    self.lock_layout = self.preference.register(
-        'display', 'lock_layout',
-        gettext('Lock Layout'), 'radioModern', LOCK_LAYOUT_LEVEL['NONE'],
-        category_label=PREF_LABEL_DISPLAY, options=[
-            {'label': gettext('None'), 'value': LOCK_LAYOUT_LEVEL['NONE']},
-            {'label': gettext('Prevent Docking'),
-             'value': LOCK_LAYOUT_LEVEL['PREVENT_DOCKING']},
-            {'label': gettext('Full Lock'),
-             'value': LOCK_LAYOUT_LEVEL['FULL']},
-        ],
-        help_str=gettext(
-            'Lock the UI layout at different levels'
         )
     )
 

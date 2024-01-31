@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -103,9 +103,10 @@ def current_user_info():
             is_admin='true' if current_user.has_role(
                 "Administrator") else 'false',
             user_id=current_user.id,
-            email=current_user.email,
+            email=current_user.email.replace("'","\\'") if current_user.email
+            else current_user.email,
             name=(
-                current_user.username.split('@')[0] if
+                current_user.username.split('@')[0].replace("'","\\'") if
                 config.SERVER_MODE is True
                 else 'postgres'
             ),
@@ -551,10 +552,12 @@ def update_user(uid, data):
     # Username and email can not be changed for internal users
     if usr.auth_source == INTERNAL:
         non_editable_params = ('username', 'email')
+    else:
+        non_editable_params = ('username',)
 
-        for f in non_editable_params:
-            if f in data:
-                return False, _("'{0}' is not allowed to modify.").format(f)
+    for f in non_editable_params:
+        if f in data:
+            return False, _("'{0}' is not allowed to modify.").format(f)
 
     try:
         new_data = validate_user(data)
@@ -579,6 +582,7 @@ def delete_user(uid):
     This function is used to delete the users
     """
     usr = User.query.get(uid)
+
     if not usr:
         return False, _("Unable to update user '{0}'").format(uid)
 

@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -762,7 +762,7 @@ class FunctionView(PGChildNodeView, DataTypeReader, SchemaDiffObjectCompare):
             fnid: Function Id
         """
 
-        res = [{'label': '', 'value': ''}]
+        res = []
         try:
             sql = render_template("/".join([self.sql_template_path,
                                             'get_languages.sql'])

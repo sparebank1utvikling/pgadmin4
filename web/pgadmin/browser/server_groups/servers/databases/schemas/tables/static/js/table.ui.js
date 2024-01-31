@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -22,7 +22,7 @@ import { getNodeVacuumSettingsSchema } from '../../../../../static/js/vacuum.ui'
 import { getNodeForeignKeySchema } from '../../constraints/foreign_key/static/js/foreign_key.ui';
 import { getNodeExclusionConstraintSchema } from '../../constraints/exclusion_constraint/static/js/exclusion_constraint.ui';
 import { getNodePrivilegeRoleSchema } from '../../../../../static/js/privilege.ui';
-import Notify from '../../../../../../../../static/js/helpers/Notifier';
+import pgAdmin from 'sources/pgadmin';
 
 export function getNodeTableSchema(treeNodeInfo, itemNodeData, pgBrowser) {
   const spcname = ()=>getNodeListByName('tablespace', treeNodeInfo, itemNodeData, {}, (m)=>{
@@ -35,8 +35,7 @@ export function getNodeTableSchema(treeNodeInfo, itemNodeData, pgBrowser) {
     {
       relowner: ()=>getNodeListByName('role', treeNodeInfo, itemNodeData),
       schema: ()=>getNodeListByName('schema', treeNodeInfo, itemNodeData, {
-        cacheLevel: 'database',
-        cacheNode: 'database',
+        cacheLevel: 'database'
       }, (d)=>{
         // If schema name start with pg_* then we need to exclude them
         return !(d && d.label.match(/^pg_/));
@@ -113,7 +112,7 @@ export class ConstraintsSchema extends BaseUISchema {
       schema: this.primaryKeyObj,
       editable: false, type: 'collection',
       group: gettext('Primary Key'), mode: ['edit', 'create'],
-      canEdit: true, canDelete: true, deps:['is_partitioned', 'typname'],
+      canEdit: true, canDelete: true, deps:['is_partitioned', 'typname', 'columns'],
       columns : ['name', 'columns'],
       disabled: this.inCatalog,
       canAdd: function(state) {
@@ -135,6 +134,20 @@ export class ConstraintsSchema extends BaseUISchema {
             ...c, is_primary_key: columns.indexOf(c.name) > -1,
           }));
           return {columns: state.columns};
+        }
+        /* If column or primary key is deleted */
+        if(actionObj.type === SCHEMA_STATE_ACTIONS.DELETE_ROW) {
+          let deletedColumn = _.differenceBy(actionObj.oldState.columns,state.columns,'cid');
+          if(deletedColumn.length && deletedColumn[0].is_primary_key && !obj.top.isNew(state)) {
+            state.columns = state.columns.map(c=>({
+              ...c, is_primary_key: false
+            }));
+            return {primary_key: []};
+          } else if(source[0] === 'primary_key') {
+            state.columns = state.columns.map(c=>({
+              ...c, is_primary_key: false
+            }));
+          }
         }
       }
     },{
@@ -608,7 +621,7 @@ export default class TableSchema extends BaseUISchema {
       group: 'advanced', min_version: 90600,
       depChange: (state)=>{
         if (state.rlspolicy && this.origData.rlspolicy != state.rlspolicy) {
-          Notify.alert(
+          pgAdmin.Browser.notifier.alert(
             gettext('Check Policy?'),
             gettext('Please check if any policy exists. If no policy exists for the table, a default-deny policy is used, meaning that no rows are visible or can be modified by other users')
           );
@@ -738,7 +751,7 @@ export default class TableSchema extends BaseUISchema {
         };
         if(!isEmptyString(state.typname) && isEmptyString(actionObj.oldState.typname)) {
           return new Promise((resolve)=>{
-            Notify.confirm(
+            pgAdmin.Browser.notifier.confirm(
               gettext('Remove column definitions?'),
               gettext('Changing \'Of type\' will remove column definitions.'),
               function () {

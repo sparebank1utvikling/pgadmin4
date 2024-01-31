@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -264,7 +264,10 @@ function launchPgAdminWindow() {
       // Create Mac Builtin Menu
       if (platform() === 'darwin') {
         nativeMenu.createMacBuiltin('pgAdmin 4');
-        nativeMenu?.items[0].submenu.removeAt(0)
+        // Remove 'About pgAdmin 4' submenu
+        nativeMenu?.items[0].submenu.removeAt(0);
+        // Remove 'Close Window' submenu
+        nativeMenu?.items[2].submenu.removeAt(1);
         pgAdminMainScreen.menu = nativeMenu;
       }
 
@@ -459,18 +462,19 @@ function getRuntimeMenu() {
     },
   }));
   subMenus.append(new nw.MenuItem({ type: 'separator' }));
-  subMenus.append(new gui.MenuItem({
-    label: runtimeSubMenus['enter_full_screen'].label,
-    enabled: runtimeSubMenus['enter_full_screen'].enable,
-    priority: runtimeSubMenus['enter_full_screen'].priority,
-    type: 'normal',
-    checked: false,
-    key: runtimeSubMenus['enter_full_screen'].key,
-    modifiers: runtimeSubMenus['enter_full_screen'].modifiers,
-    click: function () {
-      misc.toggleFullScreen();
-    },
-  }));
+    subMenus.append(new gui.MenuItem({
+      label: pgAdminMainScreen?.isFullscreen ? runtimeSubMenus['exit_full_screen'].label : runtimeSubMenus['enter_full_screen'].label,
+      enabled: runtimeSubMenus['enter_full_screen'].enable,
+      priority: runtimeSubMenus['enter_full_screen'].priority,
+      type: 'normal',
+      checked: false,
+      key: runtimeSubMenus['enter_full_screen'].key,
+      modifiers: runtimeSubMenus['enter_full_screen'].modifiers,
+      click: function () {
+        this.label = !pgAdminMainScreen?.isFullscreen ? runtimeSubMenus['exit_full_screen'].label : runtimeSubMenus['enter_full_screen'].label;
+        misc.toggleFullScreen();
+      },
+    }));
   subMenus.append(new gui.MenuItem({
     label: runtimeSubMenus['actual_size'].label,
     enabled: runtimeSubMenus['actual_size'].enable,

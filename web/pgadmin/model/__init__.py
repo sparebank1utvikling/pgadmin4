@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -33,7 +33,7 @@ import config
 #
 ##########################################################################
 
-SCHEMA_VERSION = 35
+SCHEMA_VERSION = 39
 
 ##########################################################################
 #
@@ -191,7 +191,7 @@ class Server(db.Model):
     tunnel_port = db.Column(
         db.Integer(),
         db.CheckConstraint('port <= 65534'),
-        nullable=True)
+        nullable=True, default=22)
     tunnel_username = db.Column(db.String(64), nullable=True)
     tunnel_authentication = db.Column(
         db.Integer(),
@@ -201,42 +201,13 @@ class Server(db.Model):
     )
     tunnel_identity_file = db.Column(db.String(64), nullable=True)
     tunnel_password = db.Column(PgAdminDbBinaryString())
+    tunnel_keep_alive = db.Column(db.Integer(), nullable=True, default=0)
     shared = db.Column(db.Boolean(), nullable=False)
+    shared_username = db.Column(db.String(64), nullable=True)
     kerberos_conn = db.Column(db.Boolean(), nullable=False, default=0)
     cloud_status = db.Column(db.Integer(), nullable=False, default=0)
     connection_params = db.Column(MutableDict.as_mutable(types.JSON))
-
-    @property
-    def serialize(self):
-        """Return object data in easily serializable format"""
-        return {
-            "id": self.id,
-            "user_id": self.user_id,
-            "servergroup_id": self.servergroup_id,
-            "name": self.name,
-            "host": self.host,
-            "port": self.port,
-            "maintenance_db": self.maintenance_db,
-            "username": self.username,
-            "password": self.password,
-            "save_password": self.save_password,
-            "role": self.role,
-            "comment": self.comment,
-            "discovery_id": self.discovery_id,
-            "db_res": self.db_res,
-            "passexec_cmd": self.passexec_cmd,
-            "passexec_expiration": self.passexec_expiration,
-            "bgcolor": self.bgcolor,
-            "fgcolor": self.fgcolor,
-            "service": self.service,
-            "use_ssh_tunnel": self.use_ssh_tunnel,
-            "tunnel_host": self.tunnel_host,
-            "tunnel_port": self.tunnel_port,
-            "tunnel_authentication": self.tunnel_authentication,
-            "tunnel_identity_file": self.tunnel_identity_file,
-            "tunnel_password": self.tunnel_password,
-            "connection_params": self.connection_params
-        }
+    prepare_threshold = db.Column(db.Integer(), nullable=True)
 
 
 class ModulePreference(db.Model):
@@ -443,8 +414,10 @@ class SharedServer(db.Model):
     )
     tunnel_identity_file = db.Column(db.String(64), nullable=True)
     tunnel_password = db.Column(PgAdminDbBinaryString())
+    tunnel_keep_alive = db.Column(db.Integer(), nullable=True)
     shared = db.Column(db.Boolean(), nullable=False)
     connection_params = db.Column(MutableDict.as_mutable(types.JSON))
+    prepare_threshold = db.Column(db.Integer(), nullable=True)
 
 
 class Macros(db.Model):

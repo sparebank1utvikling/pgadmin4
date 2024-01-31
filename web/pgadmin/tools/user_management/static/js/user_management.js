@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -35,7 +35,7 @@ class UserManagement {
 
   // This is a callback function to show 2FA dialog.
   show_mfa(url) {
-    showUrlDialog(gettext('Authentication'), url, 'mfa.html', 1200, 680);
+    showUrlDialog(gettext('Authentication'), url, 'mfa.html', 1000, 600);
   }
 
   // This is a callback function to show user management dialog.

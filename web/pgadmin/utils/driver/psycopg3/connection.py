@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -360,12 +360,15 @@ class Connection(BaseConnection):
                         return await psycopg.AsyncConnection.connect(
                             connection_string,
                             cursor_factory=AsyncDictCursor,
-                            autocommit=autocommit)
+                            autocommit=autocommit,
+                            prepare_threshold=manager.prepare_threshold
+                        )
                     pg_conn = asyncio.run(connectdbserver())
                 else:
                     pg_conn = psycopg.Connection.connect(
                         connection_string,
-                        cursor_factory=DictCursor)
+                        cursor_factory=DictCursor,
+                        prepare_threshold=manager.prepare_threshold)
 
         except psycopg.Error as e:
             manager.stop_ssh_tunnel()
@@ -1462,7 +1465,7 @@ Failed to reset the connection to the server due to following error:
     def _wait(self, conn):
         pass  # This function is empty
 
-    def _wait_timeout(self, conn):
+    def _wait_timeout(self, conn, time):
         pass  # This function is empty
 
     def poll(self, formatted_exception_msg=False, no_result=False):

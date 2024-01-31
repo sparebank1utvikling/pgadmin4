@@ -2,13 +2,13 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
 /* Common form components used in pgAdmin */
 
-import React, { forwardRef, useCallback, useEffect, useRef, useState } from 'react';
+import React, { forwardRef, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { makeStyles } from '@material-ui/core/styles';
 import {
   Box, FormControl, OutlinedInput, FormHelperText,
@@ -43,6 +43,8 @@ import SelectThemes from './SelectThemes';
 import { showFileManager } from '../helpers/showFileManager';
 import { withColorPicker } from '../helpers/withColorPicker';
 import { useWindowSize } from '../custom_hooks';
+import PgTreeView from '../PgTreeView';
+import Loader from 'sources/components/Loader';
 
 
 const useStyles = makeStyles((theme) => ({
@@ -117,7 +119,7 @@ function FormIcon({ type, close = false, ...props }) {
     TheIcon = WarningRoundedIcon;
   }
 
-  return <TheIcon fontSize="small" {...props} />;
+  return <TheIcon fontSize="small" {...props} data-testid={close ? 'Close' : type}/>;
 }
 FormIcon.propTypes = {
   type: PropTypes.oneOf(Object.values(MESSAGE_TYPE)),
@@ -148,7 +150,7 @@ export function FormInput({ children, error, className, label, helpMessage, requ
     );
   }
   return (
-    <Grid container spacing={0} className={className}>
+    <Grid container spacing={0} className={className} data-testid="form-input">
       <Grid item lg={labelGridBasis} md={labelGridBasis} sm={12} xs={12}>
         <InputLabel htmlFor={cid} className={clsx(classes.formLabel, error ? classes.formLabelError : null)} required={required}>
           {label}
@@ -394,7 +396,9 @@ export const InputText = forwardRef(({
         'aria-describedby': helpid,
         ...(type ? { pattern: !_.isUndefined(controlProps) && !_.isUndefined(controlProps.pattern) ? controlProps.pattern : patterns[type] } : {}),
         style: inputStyle || {},
-        autoComplete: 'new-password',
+        autoComplete: _.isUndefined(controlProps?.autoComplete) ? 'nope' : controlProps?.autoComplete,
+        'data-testid': 'input-text',
+        title: controlProps?.title,
       }}
       readOnly={Boolean(readonly)}
       disabled={Boolean(disabled)}
@@ -552,7 +556,7 @@ FormInputSwitch.propTypes = {
   controlGridBasis: PropTypes.number,
 };
 
-export function InputCheckbox({ cid, helpid, value, onChange, controlProps, readonly, ...props }) {
+export function InputCheckbox({ cid, helpid, value, onChange, controlProps, readonly, labelPlacement, ...props }) {
   controlProps = controlProps || {};
   return (
     <FormControlLabel
@@ -562,10 +566,11 @@ export function InputCheckbox({ cid, helpid, value, onChange, controlProps, read
           checked={Boolean(value)}
           onChange={readonly ? () => {/*This is intentional (SonarQube)*/ } : onChange}
           color="primary"
-          inputProps={{ 'aria-describedby': helpid }}
+          inputProps={{ 'aria-describedby': helpid, 'title': controlProps.label}}
           {...props} />
       }
       label={controlProps.label}
+      labelPlacement={labelPlacement}
     />
   );
 }
@@ -576,6 +581,7 @@ InputCheckbox.propTypes = {
   controlProps: PropTypes.object,
   onChange: PropTypes.func,
   readonly: PropTypes.bool,
+  labelPlacement: PropTypes.string
 };
 
 export function FormInputCheckbox({ hasError, required, label,
@@ -596,7 +602,7 @@ FormInputCheckbox.propTypes = {
   testcid: PropTypes.string,
 };
 
-export function InputRadio({ helpid, value, onChange, controlProps, readonly, ...props }) {
+export function InputRadio({ helpid, value, onChange, controlProps, readonly, labelPlacement, ...props }) {
   const classes = useStyles();
   controlProps = controlProps || {};
   return (
@@ -619,6 +625,7 @@ export function InputRadio({ helpid, value, onChange, controlProps, readonly, ..
 
       }
       label={controlProps.label}
+      labelPlacement={labelPlacement}
       className={(readonly || props.disabled) ? classes.readOnlySwitch : null}
     />
   );
@@ -633,33 +640,36 @@ InputRadio.propTypes = {
   labelPlacement: PropTypes.string
 };
 
-export const InputToggle = forwardRef(({ cid, value, onChange, options, disabled, readonly, ...props }, ref) => {
+export const InputToggle = forwardRef(({ cid, value, onChange, options, disabled, readonly, helpid, ...props }, ref) => {
   return (
-    <ToggleButtonGroup
-      id={cid}
-      value={value}
-      exclusive
-      onChange={(e, val) => { val !== null && onChange(val); }}
-      {...props}
-    >
-      {
-        (options || []).map((option, i) => {
-          const isSelected = option.value === value;
-          const isDisabled = disabled || option.disabled || (readonly && !isSelected);
-          return (
-            <ToggleButton ref={i == 0 ? ref : null} key={option.label} value={option.value} component={isSelected ? PrimaryButton : DefaultButton}
-              disabled={isDisabled} aria-label={option.label}>
-              <CheckRoundedIcon style={{ visibility: isSelected ? 'visible' : 'hidden' }} />&nbsp;{option.label}
-            </ToggleButton>
-          );
-        })
-      }
-    </ToggleButtonGroup>
+    <>
+      <ToggleButtonGroup
+        value={value}
+        exclusive
+        onChange={(e, val) => { val !== null && onChange(val); }}
+        {...props}
+      >
+        {
+          (options || []).map((option, i) => {
+            const isSelected = option.value === value;
+            const isDisabled = disabled || option.disabled || (readonly && !isSelected);
+            return (
+              <ToggleButton ref={i == 0 ? ref : null} key={option.label} value={option.value} component={isSelected ? PrimaryButton : DefaultButton}
+                disabled={isDisabled} aria-label={option.label}>
+                <CheckRoundedIcon style={{ visibility: isSelected ? 'visible' : 'hidden' }} />&nbsp;{option.label}
+              </ToggleButton>
+            );
+          })
+        }
+      </ToggleButtonGroup>
+      {helpid && <input style={{display: 'none'}} defaultValue={options?.find((o)=>o.value==value)?.label} id={cid} aria-describedby={helpid} />}
+    </>
   );
 });
 InputToggle.displayName = 'InputToggle';
 InputToggle.propTypes = {
   cid: PropTypes.string,
+  helpid: PropTypes.string,
   value: PropTypes.oneOfType([PropTypes.string, PropTypes.number, PropTypes.bool]),
   options: PropTypes.array,
   controlProps: PropTypes.object,
@@ -802,7 +812,7 @@ OptionView.propTypes = {
 function CustomSelectInput(props) {
   const { maxLength } = props.selectProps;
   return (
-    <RSComponents.Input {...props} maxLength={maxLength} />
+    <RSComponents.Input {...props} maxLength={maxLength} autoComplete='off' autoCorrect='off' spellCheck='off' />
   );
 }
 CustomSelectInput.propTypes = {
@@ -843,6 +853,9 @@ export function flattenSelectOptions(options) {
 
 function getRealValue(options, value, creatable, formatter) {
   let realValue = null;
+  if(options?.length == 0 && !creatable) {
+    return realValue;
+  }
   if (_.isArray(value)) {
     realValue = [...value];
     /* If multi select options need to be in some format by UI, use formatter */
@@ -875,7 +888,7 @@ InputSelectNonSearch.propTypes = {
 };
 
 export const InputSelect = forwardRef(({
-  cid, onChange, options, readonly = false, value, controlProps = {}, optionsLoaded, optionsReloadBasis, disabled, ...props }, ref) => {
+  cid, helpid, onChange, options, readonly = false, value, controlProps = {}, optionsLoaded, optionsReloadBasis, disabled, ...props }, ref) => {
   const [[finalOptions, isLoading], setFinalOptions] = useState([[], true]);
   const theme = useTheme();
 
@@ -971,25 +984,38 @@ export const InputSelect = forwardRef(({
     ...otherProps,
     ...props,
   };
+  const selectValue = useMemo(()=>{
+    if(_.isArray(realValue)) {
+      return realValue.map((o)=>o?.label)?.join(',');
+    }
+    return realValue?.label;
+  }, [realValue]);
   if (!controlProps.creatable) {
     return (
-      <Select ref={ref} {...commonProps} />
+      <>
+        <Select ref={ref} {...commonProps} />
+        {helpid && <input data-testid="select-value" style={{display: 'none'}} defaultValue={selectValue} id={cid} aria-describedby={helpid} />}
+      </>
     );
   } else {
     return (
-      <CreatableSelect
-        ref={ref}
-        {...commonProps}
-        noOptionsMessage={() =>
-          !controlProps.noDropdown ? 'No options' : null
-        }
-      />
+      <>
+        <CreatableSelect
+          ref={ref}
+          {...commonProps}
+          noOptionsMessage={() =>
+            !controlProps.noDropdown ? 'No options' : null
+          }
+        />
+        {helpid && <input data-testid="select-value" style={{display: 'none'}} defaultValue={selectValue} id={cid} aria-describedby={helpid} />}
+      </>
     );
   }
 });
 InputSelect.displayName = 'InputSelect';
 InputSelect.propTypes = {
   cid: PropTypes.string,
+  helpid: PropTypes.string,
   value: PropTypes.oneOfType([PropTypes.string, PropTypes.number, PropTypes.array, PropTypes.bool]),
   options: PropTypes.oneOfType([PropTypes.array, PropTypes.instanceOf(Promise), PropTypes.func]),
   controlProps: PropTypes.object,
@@ -1026,7 +1052,7 @@ export function InputColor({ value, controlProps, disabled, onChange, currObj })
   let btnStyles = { backgroundColor: value };
   return (
     <ColorButton title={gettext('Select the color')} className={classes.colorBtn} style={btnStyles} disabled={disabled}
-      icon={(_.isUndefined(value) || _.isNull(value) || value === '') && <CloseIcon />} options={{
+      icon={(_.isUndefined(value) || _.isNull(value) || value === '') && <CloseIcon data-label="CloseIcon" />} options={{
         ...controlProps,
         disabled: disabled
       }} onChange={onChange} value={value} currObj={currObj}
@@ -1237,10 +1263,10 @@ export function NotifierMessage({
   const classes = useStylesFormFooter();
 
   return (
-    <Box className={clsx(classes.container, classes[`container${type}`])} style={style}>
+    <Box className={clsx(classes.container, classes[`container${type}`])} style={style} data-test="notifier-message">
       {showIcon && <FormIcon type={type} className={classes[`icon${type}`]} />}
       <Box className={textCenter ? classes.messageCenter : classes.message}>{HTMLReactParse(message || '')}</Box>
-      {closable && <IconButton className={clsx(classes.closeButton, classes[`icon${type}`])} onClick={onClose}>
+      {closable && <IconButton title={gettext('Close Message')} className={clsx(classes.closeButton, classes[`icon${type}`])} onClick={onClose}>
         <FormIcon close={true} />
       </IconButton>}
     </Box>
@@ -1274,4 +1300,31 @@ FormButton.propTypes = {
   onClick: PropTypes.func,
   disabled: PropTypes.bool,
   btnName: PropTypes.string
+};
+
+export function InputTree({hasCheckbox, treeData, onChange, ...props}){
+  const [[finalData, isLoading], setFinalData] = useState([[], true]);
+
+  useEffect(() => {
+    let tdata = treeData, umounted = false;
+    if (typeof treeData === 'function') {
+      tdata = treeData();
+    }
+    setFinalData([[], true]);
+    Promise.resolve(tdata)
+      .then((res) => {
+        if(!umounted){
+          setFinalData([res, false]);
+        }
+      });
+    return () => umounted = true;
+  }, []);
+  return <>{isLoading ? <Loader message={gettext('Loading')}></Loader> : <PgTreeView data={finalData} hasCheckbox={hasCheckbox} selectionChange={onChange} {...props}></PgTreeView>}</>;
+}
+
+InputTree.propTypes = {
+  hasCheckbox: PropTypes.bool,
+  treeData: PropTypes.oneOfType([PropTypes.array, PropTypes.instanceOf(Promise), PropTypes.func]),
+  onChange: PropTypes.func,
+  selectionChange: PropTypes.func,
 };

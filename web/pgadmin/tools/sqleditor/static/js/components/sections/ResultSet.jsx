@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -17,10 +17,9 @@ import gettext from 'sources/gettext';
 import Loader from 'sources/components/Loader';
 import { Box } from '@material-ui/core';
 import { ResultSetToolbar } from './ResultSetToolbar';
-import { LayoutHelper } from '../../../../../../static/js/helpers/Layout';
+import { LayoutDockerContext } from '../../../../../../static/js/helpers/Layout';
 import { GeometryViewer } from './GeometryViewer';
 import Explain from '../../../../../../static/js/Explain';
-import Notifier from '../../../../../../static/js/helpers/Notifier';
 import { QuerySources } from './QueryHistory';
 import { getBrowser } from '../../../../../../static/js/utils';
 import CopyData from '../QueryToolDataGrid/CopyData';
@@ -29,6 +28,8 @@ import ConfirmSaveContent from '../../../../../../static/js/Dialogs/ConfirmSaveC
 import { makeStyles } from '@material-ui/styles';
 import EmptyPanelMessage from '../../../../../../static/js/components/EmptyPanelMessage';
 import { GraphVisualiser } from './GraphVisualiser';
+import { usePgAdmin } from '../../../../../../static/js/BrowserComponent';
+import pgAdmin from 'sources/pgadmin';
 
 export class ResultSetUtils {
   constructor(api, transId, isQueryTool=true) {
@@ -181,7 +182,7 @@ export class ResultSetUtils {
   }
 
   async startExecution(query, explainObject, onIncorrectSQL, flags={
-    isQueryTool: true, external: false, reconnect: false,
+    isQueryTool: true, external: false, reconnect: false
   }) {
     let startTime = new Date();
     this.eventBus.fireEvent(QUERY_TOOL_EVENTS.SET_MESSAGE, '');
@@ -282,6 +283,9 @@ export class ResultSetUtils {
     this.eventBus.fireEvent(QUERY_TOOL_EVENTS.EXECUTION_END);
     this.eventBus.fireEvent(QUERY_TOOL_EVENTS.FOCUS_PANEL, PANELS.MESSAGES);
     this.eventBus.fireEvent(QUERY_TOOL_EVENTS.SET_CONNECTION_STATUS, CONNECTION_STATUS.TRANSACTION_STATUS_INERROR);
+    if (!flags.external) {
+      this.eventBus.fireEvent(QUERY_TOOL_EVENTS.HIGHLIGHT_ERROR, parseApiError(error, true));
+    }
     this.eventBus.fireEvent(QUERY_TOOL_EVENTS.PUSH_HISTORY, {
       status: false,
       start_time: this.startTime,
@@ -331,7 +335,7 @@ export class ResultSetUtils {
         this.eventBus.fireEvent(QUERY_TOOL_EVENTS.TASK_END, gettext('Execution Cancelled'), this.endTime);
       }
       if(this.qtPref?.query_success_notification) {
-        Notifier.success(msg);
+        pgAdmin.Browser.notifier.success(msg);
       }
       if(!ResultSetUtils.isQueryStillRunning(httpMessage)) {
         this.eventBus.fireEvent(QUERY_TOOL_EVENTS.PUSH_HISTORY, {
@@ -747,6 +751,7 @@ export function ResultSet() {
   const containerRef = React.useRef(null);
   const eventBus = useContext(QueryToolEventsContext);
   const queryToolCtx = useContext(QueryToolContext);
+  const layoutDocker = useContext(LayoutDockerContext);
   const [loaderText, setLoaderText] = useState('');
   const [queryData, setQueryData] = useState(null);
   const [rows, setRows] = useState([]);
@@ -775,6 +780,7 @@ export function ResultSet() {
   const [rowsResetKey, setRowsResetKey] = useState(0);
   const lastScrollRef = useRef(null);
   const isResettingScroll = useRef(true);
+  const pgAdmin = usePgAdmin();
 
   rsu.current.setEventBus(eventBus);
   rsu.current.setQtPref(queryToolCtx.preferences?.sqleditor);
@@ -816,10 +822,10 @@ export function ResultSet() {
         },
         (planJson)=>{
           /* No need to open if plan is empty */
-          if(!LayoutHelper.isTabOpen(queryToolCtx.docker, PANELS.EXPLAIN) && !planJson) {
+          if(!layoutDocker.isTabOpen(PANELS.EXPLAIN) && !planJson) {
             return;
           }
-          LayoutHelper.openTab(queryToolCtx.docker, {
+          layoutDocker.openTab({
             id: PANELS.EXPLAIN,
             title: gettext('Explain'),
             content: <Explain plans={planJson} />,
@@ -941,7 +947,7 @@ export function ResultSet() {
     return ()=>{
       eventBus.deregisterListener(QUERY_TOOL_EVENTS.EXECUTION_START, executionStartCallback);
     };
-  }, [queryToolCtx.docker, dataChangeStore]);
+  }, [dataChangeStore]);
 
   useEffect(()=>{
     fireRowsColsCellChanged();
@@ -1064,11 +1070,11 @@ export function ResultSet() {
       if(!respData.data.status) {
         eventBus.fireEvent(QUERY_TOOL_EVENTS.SAVE_DATA_DONE, false);
         eventBus.fireEvent(QUERY_TOOL_EVENTS.SET_MESSAGE, respData.data.result);
-        Notifier.error(respData.data.result, 20000);
+        pgAdmin.Browser.notifier.error(respData.data.result, 20000);
         // If the transaction is not idle, notify the user that previous queries are not rolled back,
         // only the failed save queries.
         if (respData.data.transaction_status != CONNECTION_STATUS.TRANSACTION_STATUS_IDLE) {
-          Notifier.info(gettext('Saving data changes was rolled back but the current transaction is ' +
+          pgAdmin.Browser.notifier.info(gettext('Saving data changes was rolled back but the current transaction is ' +
                                 'still active; previous queries are unaffected.'));
         }
         setLoaderText(null);
@@ -1112,9 +1118,9 @@ export function ResultSet() {
       setSelectedColumns(new Set());
       eventBus.fireEvent(QUERY_TOOL_EVENTS.SET_CONNECTION_STATUS, respData.data.transaction_status);
       eventBus.fireEvent(QUERY_TOOL_EVENTS.SET_MESSAGE, '');
-      Notifier.success(gettext('Data saved successfully.'));
+      pgAdmin.Browser.notifier.success(gettext('Data saved successfully.'));
       if(respData.data.transaction_status > CONNECTION_STATUS.TRANSACTION_STATUS_IDLE) {
-        Notifier.info(gettext('Auto-commit is off. You still need to commit changes to the database.'));
+        pgAdmin.Browser.notifier.info(gettext('Auto-commit is off. You still need to commit changes to the database.'));
       }
     } catch (error) {
       eventBus.fireEvent(QUERY_TOOL_EVENTS.SAVE_DATA_DONE, false);
@@ -1278,7 +1284,7 @@ export function ResultSet() {
       } else if(selectedCell.current?.[0]) {
         selRowsData = [selectedCell.current[0]];
       }
-      LayoutHelper.openTab(queryToolCtx.docker, {
+      layoutDocker.openTab({
         id: PANELS.GEOMETRY,
         title:gettext('Geometry Viewer'),
         content: <GeometryViewer rows={selRowsData} columns={columns} column={column} />,
@@ -1361,7 +1367,7 @@ export function ResultSet() {
 
   useEffect(()=>{
     const showGraphVisualiser = async ()=>{
-      LayoutHelper.openTab(queryToolCtx.docker, {
+      layoutDocker.openTab({
         id: PANELS.GRAPH_VISUALISER,
         title: gettext('Graph Visualiser'),
         content: <GraphVisualiser initColumns={columns}  />,
@@ -1373,7 +1379,7 @@ export function ResultSet() {
     return ()=>{
       eventBus.deregisterListener(QUERY_TOOL_EVENTS.TRIGGER_GRAPH_VISUALISER, showGraphVisualiser);
     };
-  }, [queryToolCtx.docker, columns]);
+  }, [columns]);
 
   const rowKeyGetter = React.useCallback((row)=>row[rsu.current.clientPK]);
   return (

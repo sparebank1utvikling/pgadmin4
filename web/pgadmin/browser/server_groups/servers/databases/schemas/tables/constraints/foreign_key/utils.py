@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -157,6 +157,21 @@ def get_parent(conn, tid, template_path=None):
         table = rset['rows'][0]['table']
 
     return schema, table
+
+
+@get_template_path
+def get_delete_sql(conn, fk_data, template_path=None):
+    """
+    This function will generate sql from model data.
+    :param conn: Connection Object
+    :param data: data
+    :param template_path: Template Path
+    :return:
+    """
+    return render_template("/".join(
+        [template_path,
+         'delete.sql']),
+        data=fk_data, conn=conn).strip('\n')
 
 
 def _get_sql_for_delete_fk_constraint(data, constraint, sql, template_path,

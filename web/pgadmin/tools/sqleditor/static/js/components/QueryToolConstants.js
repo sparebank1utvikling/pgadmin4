@@ -2,7 +2,7 @@
 //
 // pgAdmin 4 - PostgreSQL Tools
 //
-// Copyright (C) 2013 - 2023, The pgAdmin Development Team
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
@@ -29,6 +29,7 @@ export const QUERY_TOOL_EVENTS = {
 
   COPY_DATA: 'COPY_DATA',
   SET_LIMIT_VALUE: 'SET_LIMIT_VALUE',
+  PROMOTE_TO_QUERY_TOOL: 'PROMOTE_TO_QUERY_TOOL',
   SET_CONNECTION_STATUS: 'SET_CONNECTION_STATUS',
   EXECUTION_START: 'EXECUTION_START',
   EXECUTION_END: 'EXECUTION_END',
@@ -101,3 +102,5 @@ export const PANELS = {
   HISTORY: 'id-history',
   GRAPH_VISUALISER: 'id-graph-visualiser',
 };
+
+export const MAX_QUERY_LENGTH = 1000000;

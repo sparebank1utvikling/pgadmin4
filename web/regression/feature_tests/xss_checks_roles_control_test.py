@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -80,7 +80,8 @@ class CheckRoleMembershipControlFeatureTest(BaseFeatureTest):
 
         # Fetch the source code for our custom control
         source_code = self.page.find_by_xpath(
-            "//span[contains(@class,'icon-')]/following-sibling::span"
+            "//div[contains(@role, 'cell')]//span[contains(@class,'icon-')]"
+            "/following-sibling::span"
         ).get_attribute('innerHTML')
 
         self._check_escaped_characters(

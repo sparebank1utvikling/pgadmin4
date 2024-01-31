@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2023, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -582,7 +582,7 @@ class EdbFuncView(PGChildNodeView, DataTypeReader):
         if sql is None:
             return None
         start = 0
-        start_position = re.search("\s+[is|as]+\s+", sql, flags=re.I)
+        start_position = re.search(r"\s+[is|as]+\s+", sql, flags=re.I)
 
         if start_position:
             start = start_position.start() + 4

@@ -2,7 +2,7 @@
 #
 # pgAdmin 4 - PostgreSQL Tools
 #
-# Copyright (C) 2013 - 2022, The pgAdmin Development Team
+# Copyright (C) 2013 - 2024, The pgAdmin Development Team
 # This software is released under the PostgreSQL Licence
 #
 ##########################################################################
@@ -32,7 +32,7 @@ class TestSQLASCIIEncoding(BaseTestGenerator):
                 table_name='test_sql_ascii',
                 db_encoding='SQL_ASCII',
                 lc_collate='C',
-                test_str='\\\\Four\\\Three\\Two\One'
+                test_str=r'\\\\Four\\\Three\\Two\One'
             )),
         (
             'Test SQL_ASCII data with file path',
@@ -40,7 +40,7 @@ class TestSQLASCIIEncoding(BaseTestGenerator):
                 table_name='test_sql_ascii',
                 db_encoding='SQL_ASCII',
                 lc_collate='C',
-                test_str='\\test\Documents\2017\12\19\AD93E646-'
+                test_str=r'\\test\Documents\2017\12\19\AD93E646-'
                          'E5FE-11E7-85AE-EB2E217F96F0.tif'
             )),
         (
@@ -98,7 +98,9 @@ class TestSQLASCIIEncoding(BaseTestGenerator):
         url = '/sqleditor/initialize/sqleditor/{0}/{1}/{2}/{3}'\
             .format(self.trans_id, test_utils.SERVER_GROUP, self.encode_sid,
                     self.encode_did)
-        response = self.tester.post(url)
+        response = self.tester.post(url, data=json.dumps({
+            "dbname": self.encode_db_name
+        }))
         self.assertEqual(response.status_code, 200)
 
         # Check character
