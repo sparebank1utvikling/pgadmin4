@@ -28,7 +28,6 @@ RUN apk add --no-cache \
     nasm \
     nodejs \
     npm \
-    yarn \
     zlib-dev
 
 # Set the CPPFLAGS environment variable
