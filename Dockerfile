@@ -44,11 +44,7 @@ RUN rm -rf /pgadmin4/web/*.log \
 
 WORKDIR /pgadmin4/web
 
-
-RUN apk add --no-cache \
-    yarn
-
-RUN yarn
+RUN node
 
 # Build the JS vendor code in the app-builder, and then remove the vendor source.
 RUN export CPPFLAGS="-DPNG_ARM_NEON_OPT=0" && \
