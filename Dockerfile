@@ -47,7 +47,7 @@ WORKDIR /pgadmin4/web
 # Set the CPPFLAGS environment variable
 ENV CPPFLAGS="-DPNG_ARM_NEON_OPT=0"
 
-RUN yarn
+RUN /usr/bin/yarn
 RUN echo "Yarn got runned"
 
 # Set Yarn version to Berry
