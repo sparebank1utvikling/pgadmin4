@@ -46,6 +46,8 @@ WORKDIR /pgadmin4/web
 
 # Build the JS vendor code in the app-builder, and then remove the vendor source.
 RUN export CPPFLAGS="-DPNG_ARM_NEON_OPT=0" && \
+    npm install -g corepack && \
+    corepack enable && \
     yarn set version berry && \
     yarn set version 3 && \
     yarn install && \
@@ -162,7 +164,7 @@ COPY --from=env-builder /venv /venv
 # Copy in the tools
 COPY --from=tool-builder /usr/local/pgsql /usr/local/
 COPY --from=pg16-builder /usr/local/lib/libpq.so.5.16 /usr/lib/
-COPY --from=pg16-builder /usr/lib/libzstd.so.1.5.5 /usr/lib/
+COPY --from=pg16-builder /usr/lib/libzstd.so.1.5.6 /usr/lib/
 COPY --from=pg16-builder /usr/lib/liblz4.so.1.9.4 /usr/lib/
 
 RUN ln -s libpq.so.5.16 /usr/lib/libpq.so.5 && \
@@ -200,14 +202,14 @@ RUN apk add \
     /venv/bin/python3 -m pip install --no-cache-dir gunicorn==20.1.0 && \
     find / -type d -name '__pycache__' -exec rm -rf {} + && \
     useradd -r -u 5050 -g root -s /sbin/nologin pgadmin && \
-    mkdir -p /var/lib/pgadmin && \
-    chown pgadmin:root /var/lib/pgadmin && \
+    mkdir -p /run/pgadmin /var/lib/pgadmin && \
+    chown pgadmin:root /run/pgadmin /var/lib/pgadmin && \
     chmod g=u /var/lib/pgadmin && \
     touch /pgadmin4/config_distro.py && \
     chown pgadmin:root /pgadmin4/config_distro.py && \
     chmod g=u /pgadmin4/config_distro.py && \
     chmod g=u /etc/passwd && \
-    setcap CAP_NET_BIND_SERVICE=+eip /usr/bin/python3.11 && \
+    setcap CAP_NET_BIND_SERVICE=+eip /usr/bin/python3.12 && \
     echo "pgadmin ALL = NOPASSWD: /usr/sbin/postfix start" > /etc/sudoers.d/postfix && \
     echo "pgadminr ALL = NOPASSWD: /usr/sbin/postfix start" >> /etc/sudoers.d/postfix
 

@@ -26,7 +26,8 @@ import ERDDialogs from '../dialogs';
 import ConfirmSaveContent from '../../../../../../static/js/Dialogs/ConfirmSaveContent';
 import Loader from '../../../../../../static/js/components/Loader';
 import { MainToolBar } from './MainToolBar';
-import { Box, withStyles } from '@material-ui/core';
+import { Box } from '@mui/material';
+import { withStyles } from '@mui/styles';
 import EventBus from '../../../../../../static/js/helpers/EventBus';
 import { ERD_EVENTS } from '../ERDConstants';
 import getApiInstance, { callFetch, parseApiError } from '../../../../../../static/js/api_instance';
@@ -127,12 +128,10 @@ class ERDTool extends React.Component {
     this.diagram = new ERDCore();
     /* Flag for checking if user has opted for save before close */
     this.closeOnSave = React.createRef();
-    this.fileInputRef = React.createRef();
     this.containerRef = React.createRef();
     this.diagramContainerRef = React.createRef();
     this.canvasEle = props.isTest ? document.createElement('div') : null;
     this.noteRefEle = null;
-    this.noteNode = null;
     this.keyboardActionObj = null;
     this.erdDialogs = new ERDDialogs(this.context);
     this.apiObj = getApiInstance();
@@ -485,7 +484,7 @@ class ERDTool extends React.Component {
             })
             .catch((err)=>{
               console.error(err);
-              reject();
+              reject(new Error(err));
             });
         });
         const {x, y} = this.diagram.getEngine().getRelativeMousePoint(e);
@@ -640,7 +639,7 @@ class ERDTool extends React.Component {
       this.setTitle(fileName);
       this.setLoading(null);
       if(this.closeOnSave) {
-        this.closePanel.call(this);
+        this.closePanel();
       }
     }).catch((err)=>{
       this.setLoading(null);

@@ -22,7 +22,6 @@ let webpackShimConfig = {
   // used by webpack while creating bundle
   resolveAlias: {
     'top': path.join(__dirname, './pgadmin/'),
-    'bundled_codemirror': path.join(__dirname, './pgadmin/static/bundle/codemirror'),
     'bundled_browser': path.join(__dirname, './pgadmin/static/bundle/browser'),
     'sources': path.join(__dirname, './pgadmin/static/js/'),
     'translations': path.join(__dirname, './pgadmin/tools/templates/js/translations'),
@@ -87,6 +86,10 @@ let webpackShimConfig = {
     'pgadmin.node.compound_trigger': path.join(__dirname, './pgadmin/browser/server_groups/servers/databases/schemas/tables/compound_triggers/static/js/compound_trigger'),
     'pgadmin.node.constraints': path.join(__dirname, './pgadmin/browser/server_groups/servers/databases/schemas/tables/constraints/static/js/constraints'),
     'pgadmin.node.database': path.join(__dirname, './pgadmin/browser/server_groups/servers/databases/static/js/database'),
+    'pgadmin.node.dbms_job_scheduler': path.join(__dirname, './pgadmin/browser/server_groups/servers/databases/dbms_job_scheduler/static/js/dbms_job_scheduler'),
+    'pgadmin.node.dbms_job': path.join(__dirname, './pgadmin/browser/server_groups/servers/databases/dbms_job_scheduler/dbms_jobs/static/js/dbms_job'),
+    'pgadmin.node.dbms_program': path.join(__dirname, './pgadmin/browser/server_groups/servers/databases/dbms_job_scheduler/dbms_programs/static/js/dbms_program'),
+    'pgadmin.node.dbms_schedule': path.join(__dirname, './pgadmin/browser/server_groups/servers/databases/dbms_job_scheduler/dbms_schedules/static/js/dbms_schedule'),
     'pgadmin.node.domain': path.join(__dirname, './pgadmin/browser/server_groups/servers/databases/schemas/domains/static/js/domain'),
     'pgadmin.node.domain_constraints': path.join(__dirname, './pgadmin/browser/server_groups/servers/databases/schemas/domains/domain_constraints/static/js/domain_constraints'),
     'pgadmin.node.event_trigger': path.join(__dirname, './pgadmin/browser/server_groups/servers/databases/event_triggers/static/js/event_trigger'),
@@ -118,6 +121,7 @@ let webpackShimConfig = {
     'pgadmin.node.primary_key': path.join(__dirname, './pgadmin/browser/server_groups/servers/databases/schemas/tables/constraints/index_constraint/static/js/primary_key'),
     'pgadmin.node.procedure': path.join(__dirname, './pgadmin/browser/server_groups/servers/databases/schemas/functions/static/js/procedure'),
     'pgadmin.node.resource_group': path.join(__dirname, './pgadmin/browser/server_groups/servers/resource_groups/static/js/resource_group'),
+    'pgadmin.node.replica_node': path.join(__dirname, './pgadmin/browser/server_groups/servers/replica_nodes/static/js/replica_node'),
     'pgadmin.node.role': path.join(__dirname, './pgadmin/browser/server_groups/servers/roles/static/js/role'),
     'pgadmin.node.rule': path.join(__dirname, './pgadmin/browser/server_groups/servers/databases/schemas/tables/rules/static/js/rule'),
     'pgadmin.node.schema': path.join(__dirname, './pgadmin/browser/server_groups/servers/databases/schemas/static/js/schema'),
@@ -152,7 +156,6 @@ let webpackShimConfig = {
     'pgadmin.tools.schema_diff': path.join(__dirname, './pgadmin/tools/schema_diff/static/js/'),
     'pgadmin.tools.search_objects': path.join(__dirname, './pgadmin/tools/search_objects/static/js/'),
     'pgadmin.tools.erd': path.join(__dirname, './pgadmin/tools/erd/static/js/'),
-    'pgadmin.tools.psql_module': path.join(__dirname, './pgadmin/tools/psql/static/js/psql_module'),
     'pgadmin.tools.psql': path.join(__dirname, './pgadmin/tools/psql/static/js/'),
     'pgadmin.tools.sqleditor': path.join(__dirname, './pgadmin/tools/sqleditor/static/js/'),
     'pgadmin.tools.user_management': path.join(__dirname, './pgadmin/tools/user_management/static/js/user_management'),
@@ -208,17 +211,5 @@ let webpackShimConfig = {
     }
     return false;
   },
-
-  /* These will be skipped when webpack picks css/scss files recursively to bundle */
-  css_bundle_skip: [
-    './pgadmin/static',
-  ],
-
-  /* These will be included in array formed by recursive traversing for css/scss files */
-  css_bundle_include: [
-    './pgadmin/static/js/components/PgTree/scss/styles.scss',
-    './pgadmin/static/scss/pgadmin.scss',
-    './pgadmin/static/css/pgadmin.css',
-  ],
 };
 module.exports = webpackShimConfig;

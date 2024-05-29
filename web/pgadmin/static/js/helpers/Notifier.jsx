@@ -8,12 +8,12 @@
 //////////////////////////////////////////////////////////////
 
 import { SnackbarProvider, SnackbarContent } from 'notistack';
-import { makeStyles } from '@material-ui/core/styles';
-import {Box} from '@material-ui/core';
-import CloseIcon from '@material-ui/icons/CloseRounded';
+import { makeStyles } from '@mui/styles';
+import {Box} from '@mui/material';
+import CloseIcon from '@mui/icons-material/CloseRounded';
 import { DefaultButton, PrimaryButton } from '../components/Buttons';
 import HTMLReactParser from 'html-react-parser';
-import CheckRoundedIcon from '@material-ui/icons/CheckRounded';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import PropTypes from 'prop-types';
 import React, { useEffect } from 'react';
 import { NotifierMessage, MESSAGE_TYPE } from '../components/FormComponents';
@@ -26,7 +26,7 @@ import { parseApiError } from '../api_instance';
 const AUTO_HIDE_DURATION = 3000;  // In milliseconds
 
 export const FinalNotifyContent = React.forwardRef(({children}, ref) => {
-  return <SnackbarContent style= {{justifyContent:'end', maxWidth: '700px'}} ref={ref}>{children}</SnackbarContent>;
+  return <SnackbarContent style= {{ justifyContent: 'end', maxWidth: '700px' }} ref={ref}>{children}</SnackbarContent>;
 });
 FinalNotifyContent.displayName = 'FinalNotifyContent';
 FinalNotifyContent.propTypes = {
@@ -133,38 +133,36 @@ class Notifier {
     if(!error.response) {
       msg = parseApiError(error);
       promptmsg = gettext('Connection Lost');
-    } else {
-      if(error.response.headers['content-type'] == 'application/json') {
-        let resp = error.response.data;
-        if(resp.info == 'CRYPTKEY_MISSING') {
-          let pgBrowser = window.pgAdmin.Browser;
-          pgBrowser.set_master_password('', ()=> {
-            if(onJSONResult && typeof(onJSONResult) == 'function') {
-              onJSONResult('CRYPTKEY_SET');
-            }
-          }, ()=> {
-            if(onJSONResult && typeof(onJSONResult) == 'function') {
-              onJSONResult('CRYPTKEY_NOT_SET');
-            }
-          });
-          return;
-        } else if (resp.result != null && (!resp.errormsg || resp.errormsg == '') &&
-          onJSONResult && typeof(onJSONResult) == 'function') {
-          return onJSONResult(resp.result);
-        }
-        msg = _.escape(resp.result) || _.escape(resp.errormsg) || 'Unknown error';
-      } else {
-        if (type === 'error') {
-          this.alert('Error', promptmsg);
-        }
+    } else if(error.response.headers['content-type'] == 'application/json') {
+      let resp = error.response.data;
+      if(resp.info == 'CRYPTKEY_MISSING') {
+        let pgBrowser = window.pgAdmin.Browser;
+        pgBrowser.set_master_password('', ()=> {
+          if(onJSONResult && typeof(onJSONResult) == 'function') {
+            onJSONResult('CRYPTKEY_SET');
+          }
+        }, ()=> {
+          if(onJSONResult && typeof(onJSONResult) == 'function') {
+            onJSONResult('CRYPTKEY_NOT_SET');
+          }
+        });
         return;
+      } else if (resp.result != null && (!resp.errormsg || resp.errormsg == '') &&
+        onJSONResult && typeof(onJSONResult) == 'function') {
+        return onJSONResult(resp.result);
       }
+      msg = _.escape(resp.result) || _.escape(resp.errormsg) || 'Unknown error';
+    } else {
+      if (type === 'error') {
+        this.alert('Error', promptmsg);
+      }
+      return;
     }
     if(type == 'error-noalert' && onJSONResult && typeof(onJSONResult) == 'function') {
       return onJSONResult();
     }
     this.alert(promptmsg, msg.replace(new RegExp(/\r?\n/, 'g'), '<br />'));
-    onJSONResult();
+    onJSONResult('ALERT_CALLED');
   }
 
   alert(title, text, onOkClick, okLabel=gettext('OK')) {

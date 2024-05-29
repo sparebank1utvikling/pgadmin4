@@ -155,8 +155,22 @@ class PgadminPage:
         self.click_element(self.find_by_css_selector(
             "li[data-label='Query Tool']"))
 
-        self.wait_for_element_to_be_visible(
-            self.driver, "//div[@id='btn-conn-status']", 5)
+        self.driver.switch_to.default_content()
+        WebDriverWait(self.driver, 10).until(
+            EC.frame_to_be_available_and_switch_to_it(
+                (By.TAG_NAME, "iframe")))
+
+        WebDriverWait(self.driver, self.timeout).until(
+            EC.visibility_of_element_located(
+                (By.CSS_SELECTOR, QueryToolLocators.btn_execute_query_css)
+            ), "Timed out waiting for execute query button to appear"
+        )
+
+        # Need to add this as by default tool tip is shown for file
+        ActionChains(self.driver).move_to_element(
+            self.driver.find_element(
+                By.CSS_SELECTOR,
+                QueryToolLocators.btn_execute_query_css)).perform()
 
     def open_view_data(self, table_name):
         self.click_element(self.find_by_css_selector(
@@ -852,7 +866,7 @@ class PgadminPage:
             backspaces = [Keys.BACKSPACE] * len(field.get_attribute('value'))
             field.send_keys(backspaces)
             field.send_keys(str(field_content))
-            self.wait_for_input_by_element(field, field_content)
+            # self.wait_for_input_by_element(field, field_content)
         else:
             self.driver.execute_script("arguments[0].value = arguments[1]",
                                        field, field_content)
@@ -892,14 +906,13 @@ class PgadminPage:
                 driver.switch_to.frame(
                     driver.find_element(By.TAG_NAME, "iframe"))
                 element = driver.find_element(
-                    By.CSS_SELECTOR, "#sqleditor-container .CodeMirror")
+                    By.CSS_SELECTOR,
+                    "#sqleditor-container #id-query .cm-content")
                 if element.is_displayed() and element.is_enabled():
                     return element
             except (NoSuchElementException, WebDriverException):
                 return False
-
         time.sleep(1)
-        # self.wait_for_query_tool_loading_indicator_to_disappear(12)
 
         retry = 2
         while retry > 0:
@@ -908,9 +921,7 @@ class PgadminPage:
                 WebDriverWait(self.driver, 10).until(
                     EC.frame_to_be_available_and_switch_to_it(
                         (By.TAG_NAME, "iframe")))
-                self.find_by_css_selector(
-                    "div.dock-tab-btn[id$=\"id-query\"]").click()
-                # self.find_by_xpath("//div[text()='Query Editor']").click()
+                self.find_by_xpath("//span[text()='Query']").click()
 
                 codemirror_ele = WebDriverWait(
                     self.driver, timeout=self.timeout, poll_frequency=0.01) \
@@ -933,9 +944,9 @@ class PgadminPage:
             action.perform()
         else:
             self.driver.execute_script(
-                "arguments[0].CodeMirror.setValue(arguments[1]);"
-                "arguments[0].CodeMirror.setCursor("
-                "arguments[0].CodeMirror.lineCount(),0);",
+                "arguments[0].cmView.view.setValue(arguments[1]);"
+                "arguments[0].cmView.view.setCursor("
+                "arguments[0].cmView.view.lineCount(),-1);",
                 codemirror_ele, field_content)
 
     def click_tab(self, tab_name):

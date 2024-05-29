@@ -13,19 +13,20 @@ import gettext from 'sources/gettext';
 import PropTypes from 'prop-types';
 import url_for from 'sources/url_for';
 import Loader from 'sources/components/Loader';
-import { makeStyles } from '@material-ui/styles';
-import { Box } from '@material-ui/core';
-import ShowChartRoundedIcon from '@material-ui/icons/ShowChartRounded';
-import ZoomOutMapIcon from '@material-ui/icons/ZoomOutMap';
-import SaveAltIcon from '@material-ui/icons/SaveAlt';
-import ExpandLessRoundedIcon from '@material-ui/icons/ExpandLessRounded';
-import ExpandMoreRoundedIcon from '@material-ui/icons/ExpandMoreRounded';
+import { makeStyles } from '@mui/styles';
+import { Box } from '@mui/material';
+import ShowChartRoundedIcon from '@mui/icons-material/ShowChartRounded';
+import ZoomOutMapIcon from '@mui/icons-material/ZoomOutMap';
+import SaveAltIcon from '@mui/icons-material/SaveAlt';
+import ExpandLessRoundedIcon from '@mui/icons-material/ExpandLessRounded';
+import ExpandMoreRoundedIcon from '@mui/icons-material/ExpandMoreRounded';
 import { InputSelect } from '../../../../../../static/js/components/FormComponents';
 import { DefaultButton, PgButtonGroup, PgIconButton} from '../../../../../../static/js/components/Buttons';
 import { LineChart, BarChart, PieChart, DATA_POINT_STYLE, DATA_POINT_SIZE,
   CHART_THEME_COLORS, CHART_THEME_COLORS_LENGTH, LightenDarkenColor} from 'sources/chartjs';
 import { QueryToolEventsContext, QueryToolContext } from '../QueryToolComponent';
 import { QUERY_TOOL_EVENTS, PANELS } from '../QueryToolConstants';
+import { useTheme } from '@mui/material';
 
 // Numeric data type used to separate out the options for Y axis.
 const NUMERIC_TYPES = ['oid', 'smallint', 'integer', 'bigint', 'decimal', 'numeric',
@@ -128,7 +129,7 @@ function GenerateGraph({graphType, graphData, ...props}) {
     plugins: {
       legend: {
         labels: {
-          usePointStyle: (showDataPoints && useDiffPointStyle) ? true : false
+          usePointStyle: (showDataPoints && useDiffPointStyle)
         },
       },
     },
@@ -202,7 +203,7 @@ function getPieChartData(rows, colName, colPosition, queryToolCtx) {
 }
 
 // This function is used to get the graph data set for the X axis and Y axis
-function getGraphDataSet(graphType, rows, columns, xaxis, yaxis, queryToolCtx) {
+function getGraphDataSet(graphType, rows, columns, xaxis, yaxis, queryToolCtx, graphColors) {
   // Function is used to the find the position of the column
   function getColumnPosition(colName) {
     return _.find(columns, (c)=>(c.name==colName))?.pos;
@@ -227,7 +228,7 @@ function getGraphDataSet(graphType, rows, columns, xaxis, yaxis, queryToolCtx) {
       }
       colorIndex = colorIndex + 1;
 
-      let color = CHART_THEME_COLORS[queryToolCtx.preferences.misc.theme][colorIndex];
+      let color = graphColors[colorIndex];
       let colPosition = getColumnPosition(colName);
 
       // Loop is used to set the index for DATA_POINT_STYLE array
@@ -255,13 +256,15 @@ export function GraphVisualiser({initColumns}) {
   const eventBus = useContext(QueryToolEventsContext);
   const queryToolCtx = useContext(QueryToolContext);
   const [graphType, setGraphType] = useState('L');
-  const [xaxis, setXAxis] = useState(null);
-  const [yaxis, setYAxis] = useState([]);
+  const [xAxis, setXAxis] = useState(null);
+  const [yAxis, setYAxis] = useState([]);
   const [[graphData, graphDataKey], setGraphData] = useState([{'datasets': []}, 0]);
   const [loaderText, setLoaderText] = useState('');
   const [columns, setColumns] = useState(initColumns);
   const [graphHeight, setGraphHeight] = useState();
   const [expandedState, setExpandedState] = useState(true);
+  const [graphColor, setGraphColor] = useState([]);
+  const theme = useTheme();
 
 
   // Create X axis options for drop down.
@@ -339,7 +342,25 @@ export function GraphVisualiser({initColumns}) {
     if (graphType === 'P') {
       setYAxis('');
     }
-  }, [graphType]);
+  }, [graphType, theme]);
+
+  useEffect(()=>{
+    setGraphColor(CHART_THEME_COLORS[queryToolCtx.preferences.misc.theme]);
+  }, [queryToolCtx.preferences.misc.theme, theme]);
+
+  const graphBackgroundColor = useMemo(() => {
+    return theme.palette.background.default;
+  },[theme]);
+
+
+  const beforeDrawFunc = (chart) => {
+    const ctx = chart.canvas.getContext('2d');
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-over';
+    ctx.fillStyle = graphBackgroundColor;
+    ctx.fillRect(0, 0, chart.width, chart.height);
+    ctx.restore();
+  };
 
   // Generate button callback
   const onGenerate = async ()=>{
@@ -359,7 +380,7 @@ export function GraphVisualiser({initColumns}) {
     setLoaderText(gettext('Rendering data points...'));
     // Set the Graph Data
     setGraphData(
-      (prev)=> [getGraphDataSet(graphType, res.data.data.result, columns, xaxis, _.isArray(yaxis) ? yaxis : [yaxis] , queryToolCtx), prev[1] + 1]
+      (prev)=> [getGraphDataSet(graphType, res.data.data.result, columns, xAxis, _.isArray(yAxis) ? yAxis : [yAxis] , queryToolCtx, graphColor), prev[1] + 1]
     );
 
     setLoaderText('');
@@ -382,12 +403,7 @@ export function GraphVisualiser({initColumns}) {
   // when downloading the graph.
   const plugin = {
     beforeDraw: (chart) => {
-      const ctx = chart.canvas.getContext('2d');
-      ctx.save();
-      ctx.globalCompositeOperation = 'destination-over';
-      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--color-bg');
-      ctx.fillRect(0, 0, chart.width, chart.height);
-      ctx.restore();
+      beforeDrawFunc(chart);
     }
   };
 
@@ -411,7 +427,7 @@ export function GraphVisualiser({initColumns}) {
               }
             }} value={graphType} />
           <DefaultButton style={{marginLeft: 'auto'}} onClick={onGenerate} startIcon={<ShowChartRoundedIcon />}
-            disabled={ _.isEmpty(xaxis) || yaxis.length <= 0 }>
+            disabled={ _.isEmpty(xAxis) || yAxis.length <= 0 }>
             {gettext('Generate')}
           </DefaultButton>
           <PgIconButton title={expandedState ? gettext('Collapse') : gettext('Expand')}
@@ -422,12 +438,12 @@ export function GraphVisualiser({initColumns}) {
           <Box className={classes.displayFlex}>
             <span className={classes.spanLabel}>{graphType != 'P' ? gettext('X Axis') : gettext('Label')}</span>
             <InputSelect className={classes.axisSelectCtrl} options={xAxisOptions}
-              onChange={(v)=>setXAxis(v)} value={xaxis} optionsReloadBasis={optionsReload}/>
+              onChange={(v)=>setXAxis(v)} value={xAxis} optionsReloadBasis={optionsReload}/>
           </Box>
           <Box className={classes.displayFlex}>
             <span className={classes.spanLabel}>{graphType != 'P' ? gettext('Y Axis') : gettext('Value')}</span>
             <InputSelect className={classes.axisSelectCtrl} controlProps={{'multiple': graphType != 'P', allowSelectAll: graphType != 'P'}}
-              options={yAxisOptions} onChange={(v)=>setYAxis(v)} value={yaxis} optionsReloadBasis={optionsReload}/>
+              options={yAxisOptions} onChange={(v)=>setYAxis(v)} value={yAxis} optionsReloadBasis={optionsReload}/>
           </Box>
         </>
         }
@@ -444,7 +460,7 @@ export function GraphVisualiser({initColumns}) {
         <Box style={{height:`${graphHeight}px`}}>
           {useMemo(()=> <GenerateGraph graphType={graphType} graphData={graphData} onInit={(chartObj)=> {
             chartObjRef.current = chartObj;
-          }} plugins={plugin}/>, [graphDataKey])}
+          }} plugins={[plugin]}/>, [graphDataKey])}
         </Box>
       </Box>
     </Box>

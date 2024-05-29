@@ -27,8 +27,8 @@ import keyring
 from flask import current_app, render_template, url_for, make_response, \
     flash, Response, request, after_this_request, redirect, session
 from flask_babel import gettext
-from flask_gravatar import Gravatar
-from flask_login import current_user, login_required
+from libgravatar import Gravatar
+from flask_security import current_user
 from flask_login.utils import login_url
 from flask_security.changeable import send_password_changed_notice
 from flask_security.decorators import anonymous_user_required
@@ -63,6 +63,8 @@ from pgadmin.utils.constants import MIMETYPE_APP_JS, PGADMIN_NODE,\
     VW_EDT_DEFAULT_PLACEHOLDER
 from pgadmin.authenticate import AuthSourceManager
 from pgadmin.utils.exception import CryptKeyMissing
+
+from pgadmin.user_login_check import pga_login_required
 
 try:
     from flask_security.views import default_render_json
@@ -360,23 +362,26 @@ def _get_supported_browser():
     return browser_name, browser_known, version
 
 
+@blueprint.add_app_template_filter
+def gravatar(username):
+    """
+    This function adds a template filter which
+    returns gravatar image for user.
+    :return: gravatar image
+    """
+    g = Gravatar(username)
+    return g.get_image(
+        size=100,
+        rating='g',
+        default='retro'
+    )
+
+
 @blueprint.route("/")
 @pgCSRFProtect.exempt
-@login_required
-@mfa_required
+@pga_login_required
 def index():
     """Render and process the main browser window."""
-    # Register Gravatar module with the app only if required
-    if config.SHOW_GRAVATAR_IMAGE:
-        Gravatar(
-            current_app,
-            size=100,
-            rating='g',
-            default='retro',
-            force_default=False,
-            use_ssl=True,
-            base_url=None
-        )
 
     # Check the browser is a supported version
     # NOTE: If the checks here are updated, make sure the supported versions
@@ -422,7 +427,7 @@ def index():
         domain['domain'] = config.COOKIE_DEFAULT_DOMAIN
 
     response.set_cookie("PGADMIN_LANGUAGE", value=language,
-                        path=config.COOKIE_DEFAULT_PATH,
+                        path=config.SESSION_COOKIE_PATH,
                         secure=config.SESSION_COOKIE_SECURE,
                         httponly=config.SESSION_COOKIE_HTTPONLY,
                         samesite=config.SESSION_COOKIE_SAMESITE,
@@ -467,15 +472,18 @@ def get_shared_storage_list():
 
 @blueprint.route("/js/utils.js")
 @pgCSRFProtect.exempt
-@login_required
+@pga_login_required
 def utils():
     layout = get_setting('Browser/Layout', default='')
     snippets = []
 
     prefs = Preferences.module('paths')
-
     pg_help_path_pref = prefs.preference('pg_help_path')
     pg_help_path = pg_help_path_pref.get()
+
+    # Added to have theme value available at app start page loading
+    prefs = Preferences.module('misc')
+    theme = prefs.preference('theme').get()
 
     # Get sqleditor options
     prefs = Preferences.module('sqleditor')
@@ -538,6 +546,7 @@ def utils():
         render_template(
             'browser/js/utils.js',
             layout=layout,
+            theme=theme,
             jssnippets=snippets,
             pg_help_path=pg_help_path,
             editor_tab_size=editor_tab_size,
@@ -568,6 +577,7 @@ def utils():
             shared_storage_list=shared_storage_list,
             restricted_shared_storage_list=[] if current_user.has_role(
                 "Administrator") else restricted_shared_storage_list,
+            enable_server_passexec_cmd=config.ENABLE_SERVER_PASS_EXEC_CMD,
         ),
         200, {'Content-Type': MIMETYPE_APP_JS})
 
@@ -583,7 +593,7 @@ def exposed_urls():
 
 @blueprint.route("/js/error.js")
 @pgCSRFProtect.exempt
-@login_required
+@pga_login_required
 def error_js():
     return make_response(
         render_template('browser/js/error.js', _=gettext),
@@ -600,7 +610,7 @@ def messages_js():
 
 @blueprint.route("/browser.css")
 @pgCSRFProtect.exempt
-@login_required
+@pga_login_required
 def browser_css():
     """Render and return CSS snippets from the nodes and modules."""
     snippets = []
@@ -615,7 +625,7 @@ def browser_css():
 
 
 @blueprint.route("/nodes/", endpoint="nodes")
-@login_required
+@pga_login_required
 def get_nodes():
     """Build a list of treeview nodes from the child nodes."""
     nodes = []
@@ -922,7 +932,7 @@ if hasattr(config, 'SECURITY_CHANGEABLE') and config.SECURITY_CHANGEABLE:
     @blueprint.route("/change_password", endpoint="change_password",
                      methods=['GET', 'POST'])
     @pgCSRFProtect.exempt
-    @login_required
+    @pga_login_required
     def change_password():
         """View function which handles a change password request."""
 

@@ -28,15 +28,15 @@ function MappedFormControlBase({ type, value, id, onChange, className, visible, 
     if(e?.target) {
       val = e.target.value;
     }
-    onChange && onChange(val);
+    onChange?.(val);
   }, []);
 
   const onSqlChange = useCallback((changedValue) => {
-    onChange && onChange(changedValue);
+    onChange?.(changedValue);
   }, []);
 
   const onTreeSelection = useCallback((selectedValues)=> {
-    onChange && onChange(selectedValues);
+    onChange?.(selectedValues);
   }, []);
 
   if (!visible) {
@@ -128,7 +128,7 @@ function MappedCellControlBase({ cell, value, id, optionsLoaded, onCellChange, v
       val = e.target.value;
     }
 
-    onCellChange && onCellChange(val);
+    onCellChange?.(val);
   }, []);
 
   const onRadioChange = useCallback((e) => {
@@ -136,11 +136,11 @@ function MappedCellControlBase({ cell, value, id, optionsLoaded, onCellChange, v
     if(e?.target) {
       val = e.target.checked;
     }
-    onCellChange && onCellChange(val);
+    onCellChange?.(val);
   });
 
   const onSqlChange = useCallback((val) => {
-    onCellChange && onCellChange(val);
+    onCellChange?.(val);
   }, []);
 
   /* Some grid cells are based on options selected in other cells.
@@ -148,8 +148,8 @@ function MappedCellControlBase({ cell, value, id, optionsLoaded, onCellChange, v
    */
   const optionsLoadedRerender = useCallback((res) => {
     /* optionsLoaded is called when select options are fetched */
-    optionsLoaded && optionsLoaded(res);
-    reRenderRow && reRenderRow();
+    optionsLoaded?.(res);
+    reRenderRow?.();
   }, []);
 
   if (!visible) {
@@ -212,7 +212,7 @@ const ALLOWED_PROPS_FIELD_COMMON = [
   'label', 'options', 'optionsLoaded', 'controlProps', 'schema', 'inputRef',
   'visible', 'autoFocus', 'helpMessage', 'className', 'optionsReloadBasis',
   'orientation', 'isvalidate', 'fields', 'radioType', 'hideBrowseButton', 'btnName', 'hidden',
-  'withContainer', 'controlGridBasis', 'hasCheckbox', 'treeData', 'title'
+  'withContainer', 'controlGridBasis', 'hasCheckbox', 'treeData', 'labelTooltip'
 ];
 
 const ALLOWED_PROPS_FIELD_FORM = [

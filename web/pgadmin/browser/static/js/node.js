@@ -139,7 +139,7 @@ define('pgadmin.browser.node', [
           },
           enable: _.isFunction(self.canEdit) ?
             function() {
-              return !!(self.canEdit.apply(self, arguments));
+              return !!(self.canEdit(...arguments));
             } : (!!self.canEdit),
         }]);
       }
@@ -159,7 +159,7 @@ define('pgadmin.browser.node', [
           },
           enable: _.isFunction(self.canDrop) ?
             function() {
-              return !!(self.canDrop.apply(self, arguments));
+              return !!(self.canDrop(...arguments));
             } : (!!self.canDrop),
         }]);
 
@@ -177,7 +177,7 @@ define('pgadmin.browser.node', [
             },
             enable: _.isFunction(self.canDropCascade) ?
               function() {
-                return self.canDropCascade.apply(self, arguments);
+                return self.canDropCascade(...arguments);
               } : (!!self.canDropCascade),
           }]);
         }
@@ -273,14 +273,8 @@ define('pgadmin.browser.node', [
           parentData.server.user.can_create_role) {
           return true;
         } else if (
-          (
-            parentData.server && (
-              parentData.server.user.is_superuser ||
-              parentData.server.user.can_create_db)
-          ) ||
-          (
-            parentData.schema && parentData.schema.can_create
-          )
+          ( parentData.server?.user.is_superuser || parentData.server?.user.can_create_db) ||
+          (parentData.schema?.can_create)
         ) {
           return true;
         } else {
@@ -347,7 +341,7 @@ define('pgadmin.browser.node', [
        **/
       show_obj_properties: function(args, item) {
         let t = pgBrowser.tree,
-          nodeItem = (args && args.item) || item || t.selected(),
+          nodeItem = args?.item || item || t.selected(),
           nodeData = nodeItem ? t.itemData(nodeItem) : undefined,
           panelTitle = this.title(nodeData, args.action),
           treeNodeInfo = pgBrowser.tree.getTreeNodeHierarchy(nodeItem);
@@ -392,7 +386,7 @@ define('pgadmin.browser.node', [
           const onSave = (newNodeData)=>{
             // Clear the cache for this node now.
             setTimeout(()=>{
-              this.clear_cache.apply(this, item);
+              this.clear_cache(item);
             }, 0);
             try {
               pgBrowser.Events.trigger(
@@ -422,7 +416,7 @@ define('pgadmin.browser.node', [
           const onSave = (newNodeData)=>{
             // Clear the cache for this node now.
             setTimeout(()=>{
-              this.clear_cache.apply(this, item);
+              this.clear_cache(item);
             }, 0);
             try {
               pgBrowser.Events.trigger(
@@ -452,7 +446,7 @@ define('pgadmin.browser.node', [
 
             // Clear the cache for this node now.
             setTimeout(()=>{
-              this.clear_cache.apply(this, item);
+              this.clear_cache(item);
             }, 0);
 
             pgBrowser.Events.trigger(
@@ -536,7 +530,7 @@ define('pgadmin.browser.node', [
           title = gettext('Delete CASCADE %s?', obj.label);
 
           if (!(_.isFunction(obj.canDropCascade) ?
-            obj.canDropCascade.apply(obj, [d, i]) : obj.canDropCascade)) {
+            obj.canDropCascade(d, i) : obj.canDropCascade)) {
             pgAdmin.Browser.notifier.error(
               gettext('The %s "%s" cannot be dropped.', obj.label, d.label),
               10000
@@ -553,7 +547,7 @@ define('pgadmin.browser.node', [
           }
 
           if (!(_.isFunction(obj.canDrop) ?
-            obj.canDrop.apply(obj, [d, i]) : obj.canDrop)) {
+            obj.canDrop(d, i) : obj.canDrop)) {
             pgAdmin.Browser.notifier.error(
               gettext('The %s "%s" cannot be dropped/removed.', obj.label, d.label),
               10000
@@ -670,7 +664,7 @@ define('pgadmin.browser.node', [
           t = pgBrowser.tree,
           i = input.item || t.selected(),
           d = i  ? t.itemData(i) : undefined;
-        pgBrowser.psql.psql_tool(d, i, true);
+        pgAdmin.Tools.Psql.openPsqlTool(d, i);
       },
 
       // Logic to change the server background colour
@@ -751,7 +745,7 @@ define('pgadmin.browser.node', [
       removed: function(item) {
         let self = this;
         setTimeout(function() {
-          self.clear_cache.apply(self, item);
+          self.clear_cache(item);
         }, 0);
       },
       refresh: function(cmd, _item) {
@@ -770,7 +764,7 @@ define('pgadmin.browser.node', [
         let tree = pgBrowser.tree,
           auto_expand = usePreferences.getState().getPreferences('browser', 'auto_expand_sole_children');
 
-        if (auto_expand && auto_expand.value && tree.children(item).length == 1) {
+        if (auto_expand?.value && tree.children(item).length == 1) {
           // Automatically expand the child node, if a treeview node has only a single child.
           const first_child = tree.first(item);
 
@@ -808,7 +802,7 @@ define('pgadmin.browser.node', [
         id: panelId,
         title: panelTitle,
         manualClose: true,
-        icon: `dialog-node-icon ${evalFunc(this, this.node_image, dialogProps.itemNodeData) ?? ('icon-' + this.type)}`,
+        icon: `dialog-node-icon ${evalFunc(this, this.node_image, dialogProps.nodeData) ?? ('icon-' + this.type)}`,
         content: (
           <ErrorBoundary>
             <ObjectNodeProperties
@@ -827,22 +821,18 @@ define('pgadmin.browser.node', [
       /* Fit to standard sizes */
       if(w <= pgBrowser.stdW.sm) {
         w = pgBrowser.stdW.sm;
+      } else if(w <= pgBrowser.stdW.md) {
+        w = pgBrowser.stdW.md;
       } else {
-        if(w <= pgBrowser.stdW.md) {
-          w = pgBrowser.stdW.md;
-        } else {
-          w = pgBrowser.stdW.lg;
-        }
+        w = pgBrowser.stdW.lg;
       }
 
       if(h <= pgBrowser.stdH.sm) {
         h = pgBrowser.stdH.sm;
+      } else if(h <= pgBrowser.stdH.md) {
+        h = pgBrowser.stdH.md;
       } else {
-        if(h <= pgBrowser.stdH.md) {
-          h = pgBrowser.stdH.md;
-        } else {
-          h = pgBrowser.stdH.lg;
-        }
+        h = pgBrowser.stdH.lg;
       }
 
       if(update) {
@@ -946,7 +936,7 @@ define('pgadmin.browser.node', [
       let cached = this.cached = this.cached || {},
         hash = url,
         min_priority = (
-          node_info && node_info[level] && node_info[level].priority
+          node_info?.[level] && node_info?.[level].priority
         ) || 0;
 
       if (node_info) {

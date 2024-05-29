@@ -42,7 +42,7 @@ export default function ObjectNodeProperties({panelId, node, treeNodeInfo, nodeD
   let warnOnCloseFlag = true;
   const confirmOnCloseReset = usePreferences().getPreferencesForModule('browser').confirm_on_properties_close;
   let updatedData =  ['table', 'partition'].includes(nodeType) && !_.isEmpty(nodeData.rows_cnt) ? {rows_cnt: nodeData.rows_cnt} : undefined;
-  let schema = node.getSchema.call(node, treeNodeInfo, nodeData);
+  let schema = node.getSchema(treeNodeInfo, nodeData);
 
   // We only have two actionTypes, 'create' and 'edit' to initiate the dialog,
   // so if isActionTypeCopy is true, we should revert back to "create" since
@@ -146,19 +146,15 @@ export default function ObjectNodeProperties({panelId, node, treeNodeInfo, nodeD
       let fullUrl = '';
 
       if (server.server_type == 'ppas' && node.epasHelp) {
-        fullUrl = getEPASHelpUrl(server.version);
+        fullUrl = getEPASHelpUrl(server.version, node.epasURL);
+      } else if (node.sqlCreateHelp == '' && node.sqlAlterHelp != '') {
+        fullUrl = getHelpUrl(helpUrl, node.sqlAlterHelp, server.version);
+      } else if (node.sqlCreateHelp != '' && node.sqlAlterHelp == '') {
+        fullUrl = getHelpUrl(helpUrl, node.sqlCreateHelp, server.version);
+      } else if (isNew) {
+        fullUrl = getHelpUrl(helpUrl, node.sqlCreateHelp, server.version);
       } else {
-        if (node.sqlCreateHelp == '' && node.sqlAlterHelp != '') {
-          fullUrl = getHelpUrl(helpUrl, node.sqlAlterHelp, server.version);
-        } else if (node.sqlCreateHelp != '' && node.sqlAlterHelp == '') {
-          fullUrl = getHelpUrl(helpUrl, node.sqlCreateHelp, server.version);
-        } else {
-          if (isNew) {
-            fullUrl = getHelpUrl(helpUrl, node.sqlCreateHelp, server.version);
-          } else {
-            fullUrl = getHelpUrl(helpUrl, node.sqlAlterHelp, server.version);
-          }
-        }
+        fullUrl = getHelpUrl(helpUrl, node.sqlAlterHelp, server.version);
       }
 
       window.open(fullUrl, 'postgres_help');
@@ -216,13 +212,13 @@ export default function ObjectNodeProperties({panelId, node, treeNodeInfo, nodeD
     schema.filterGroups = [gettext('Security')];
   }
   // Reset stale counter.
-  useEffect(()=> {
+  useMemo(()=> {
     staleCounter.current = 0;
   }, [nodeData?._id]);
 
   const key = useMemo(()=>{
     // If node data is updated increase the counter to show updated data.
-    if(isStale){
+    if(isStale) {
       staleCounter.current += 1;
     }
     if( actionType != 'properties' || isActive) {

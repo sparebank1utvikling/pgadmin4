@@ -6,11 +6,12 @@
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
-import { makeStyles, Box, Portal } from '@material-ui/core';
+import { Box, Portal } from '@mui/material';
+import { makeStyles } from '@mui/styles';
 import React, {useContext, useLayoutEffect, useRef} from 'react';
 import { DefaultButton, PrimaryButton } from '../../../../../../static/js/components/Buttons';
-import CheckRoundedIcon from '@material-ui/icons/CheckRounded';
-import CloseIcon from '@material-ui/icons/Close';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
+import CloseIcon from '@mui/icons-material/Close';
 import gettext from 'sources/gettext';
 import clsx from 'clsx';
 import JSONBigNumber from 'json-bignumber';
@@ -211,11 +212,10 @@ export function TextEditor({row, column, onRowChange, onClose}) {
             {gettext('Cancel')}
           </DefaultButton>
           {column.can_edit &&
-          <>
             <PrimaryButton startIcon={<CheckRoundedIcon />} onClick={onOK} size="small" className={classes.buttonMargin}>
               {gettext('OK')}
             </PrimaryButton>
-          </>}
+          }
         </Box>
       </Box>
     </Portal>
@@ -254,7 +254,7 @@ export function NumberEditor({row, column, onRowChange, onClose}) {
   };
   const onBlur = ()=>{
     if(isValidData()) {
-      onClose(column.can_edit ? true : false);
+      onClose(column.can_edit);
       return true;
     }
     return false;
@@ -389,11 +389,10 @@ export function JsonTextEditor({row, column, onRowChange, onClose}) {
             {gettext('Cancel')}
           </DefaultButton>
           {column.can_edit &&
-          <>
             <PrimaryButton startIcon={<CheckRoundedIcon />} onClick={onOK} size="small" className={classes.buttonMargin}>
               {gettext('OK')}
             </PrimaryButton>
-          </>}
+          }
         </Box>
       </Box>
     </Portal>

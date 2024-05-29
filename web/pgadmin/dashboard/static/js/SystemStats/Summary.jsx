@@ -9,12 +9,12 @@
 import React, { useState, useEffect, useRef, useReducer, useMemo } from 'react';
 import gettext from 'sources/gettext';
 import PropTypes from 'prop-types';
-import { makeStyles } from '@material-ui/core/styles';
+import { makeStyles } from '@mui/styles';
 import url_for from 'sources/url_for';
 import getApiInstance from 'sources/api_instance';
 import {getGCD, getEpoch} from 'sources/utils';
-import ChartContainer from '../ChartContainer';
-import { Grid } from '@material-ui/core';
+import ChartContainer from '../components/ChartContainer';
+import { Grid } from '@mui/material';
 import { DATA_POINT_SIZE } from 'sources/chartjs';
 import StreamingChart from '../../../../static/js/components/PgChart/StreamingChart';
 import {useInterval, usePrevious} from 'sources/custom_hooks';
@@ -87,27 +87,9 @@ export default function Summary({preferences, sid, did, pageVisible, enablePoll=
   const [osStats, setOsStats] = useState([]);
   const [cpuStats, setCpuStats] = useState([]);
 
-  const [, setCounterData] = useState({});
   const [pollDelay, setPollDelay] = useState(5000);
   const [errorMsg, setErrorMsg] = useState(null);
   const [chartDrawnOnce, setChartDrawnOnce] = useState(false);
-
-  const tableHeader = [
-    {
-      Header: gettext('Property'),
-      accessor: 'name',
-      sortable: true,
-      resizable: true,
-      disableGlobalFilter: false,
-    },
-    {
-      Header: gettext('Value'),
-      accessor: 'value',
-      sortable: true,
-      resizable: true,
-      disableGlobalFilter: false,
-    },
-  ];
 
   useEffect(()=>{
     let calcPollDelay = false;
@@ -221,17 +203,10 @@ export default function Summary({preferences, sid, did, pageVisible, enablePoll=
         setErrorMsg(null);
         processHandleCountReduce({incoming: data['hpc_stats']});
 
-        setCounterData((prevCounterData)=>{
-          return {
-            ...prevCounterData,
-            ...data,
-          };
-        });
       })
       .catch((error)=>{
         if(!errorMsg) {
           processHandleCountReduce({reset:chartsDefault['hpc_stats']});
-          setCounterData({});
           if(error.response) {
             if (error.response.status === 428) {
               setErrorMsg(gettext('Please connect to the selected server to view the graph.'));
@@ -256,12 +231,10 @@ export default function Summary({preferences, sid, did, pageVisible, enablePoll=
           processHandleCount={transformData(processHandleCount, preferences['hpc_stats_refresh'])}
           osStats={osStats}
           cpuStats={cpuStats}
-          tableHeader={tableHeader}
           errorMsg={errorMsg}
           showTooltip={preferences['graph_mouse_track']}
           showDataPoints={preferences['graph_data_points']}
           lineBorderWidth={preferences['graph_line_border_width']}
-          isDatabase={did > 0}
           isTest={false}
         />
       }
@@ -286,21 +259,21 @@ function SummaryWrapper(props) {
   }), [props.showTooltip, props.showDataPoints, props.lineBorderWidth]);
   return (
     <>
-      <Grid container spacing={1} className={classes.container}>
-        <Grid item md={6} sm={12}>
+      <Grid container spacing={0.5} className={classes.container}>
+        <Grid item md={6}>
           <div className={classes.tableContainer}>
             <div className={classes.containerHeader}>{gettext('OS information')}</div>
             <SummaryTable data={props.osStats} />
           </div>
         </Grid>
-        <Grid item md={6} sm={12} className={classes.chartContainer}>
+        <Grid item md={6}className={classes.chartContainer}>
           <ChartContainer id='hpc-graph' title={gettext('Process & handle count')} datasets={props.processHandleCount.datasets}  errorMsg={props.errorMsg} isTest={props.isTest}>
             <StreamingChart data={props.processHandleCount} dataPointSize={DATA_POINT_SIZE} xRange={X_AXIS_LENGTH} options={options} showSecondAxis={true} />
           </ChartContainer>
         </Grid>
       </Grid>
-      <Grid container spacing={1} className={classes.container}>
-        <Grid item md={6} sm={12}>
+      <Grid container spacing={0.5} className={classes.container}>
+        <Grid item md={6}>
           <div className={classes.tableContainer}>
             <div className={classes.containerHeader}>{gettext('CPU information')}</div>
             <SummaryTable data={props.cpuStats} />
@@ -317,11 +290,9 @@ SummaryWrapper.propTypes = {
   processHandleCount: PropTypes.any.isRequired,
   osStats: PropTypes.any.isRequired,
   cpuStats: PropTypes.any.isRequired,
-  tableHeader: PropTypes.any.isRequired,
   errorMsg: PropTypes.any,
   showTooltip: PropTypes.bool,
   showDataPoints: PropTypes.bool,
   lineBorderWidth: PropTypes.number,
-  isDatabase: PropTypes.bool,
   isTest: PropTypes.bool,
 };

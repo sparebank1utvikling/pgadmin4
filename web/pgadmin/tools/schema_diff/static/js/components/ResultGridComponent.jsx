@@ -13,11 +13,11 @@ import clsx from 'clsx';
 import { SelectColumn } from 'react-data-grid';
 import React, { useContext, useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react';
 
-import { Box } from '@material-ui/core';
-import { makeStyles } from '@material-ui/styles';
-import KeyboardArrowRightRoundedIcon from '@material-ui/icons/KeyboardArrowRightRounded';
-import KeyboardArrowDownRoundedIcon from '@material-ui/icons/KeyboardArrowDownRounded';
-import InfoIcon from '@material-ui/icons/InfoRounded';
+import { Box } from '@mui/material';
+import { makeStyles } from '@mui/styles';
+import KeyboardArrowRightRoundedIcon from '@mui/icons-material/KeyboardArrowRightRounded';
+import KeyboardArrowDownRoundedIcon from '@mui/icons-material/KeyboardArrowDownRounded';
+import InfoIcon from '@mui/icons-material/InfoRounded';
 
 import gettext from 'sources/gettext';
 import url_for from 'sources/url_for';
@@ -311,11 +311,8 @@ function expandRows(children, filterParams, tempChild, newRows, rowIndex) {
       }
 
     }
-    else {
-      if (filterParams.includes(child.status)) {
-        tempChild.push(child);
-      }
-
+    else if (filterParams.includes(child.status)) {
+      tempChild.push(child);
     }
   });
   if (tempChild.length > 0) {
@@ -548,16 +545,14 @@ export function ResultGridComponent({ gridData, allRowIds, filterParams, selecte
     let clsName = null;
     if (selectedRowIds.includes(`${row.id}`) || isCellSelected || row.id == activeRowId) {
       clsName = isCheckbox ? classes.selectedRowCheckBox : classes.selectedRow;
-    } else {
-      if (row.status == FILTER_NAME.DIFFERENT) {
-        clsName = classes.different;
-      } else if (row.status == FILTER_NAME.SOURCE_ONLY) {
-        clsName = classes.source;
-      } else if (row.status == FILTER_NAME.TARGET_ONLY) {
-        clsName = classes.target;
-      } else if (row.status == FILTER_NAME.IDENTICAL) {
-        clsName = classes.identical;
-      }
+    } else if (row.status == FILTER_NAME.DIFFERENT) {
+      clsName = classes.different;
+    } else if (row.status == FILTER_NAME.SOURCE_ONLY) {
+      clsName = classes.source;
+    } else if (row.status == FILTER_NAME.TARGET_ONLY) {
+      clsName = classes.target;
+    } else if (row.status == FILTER_NAME.IDENTICAL) {
+      clsName = classes.identical;
     }
 
     return clsName;
@@ -771,8 +766,4 @@ ResultGridComponent.propTypes = {
   transId: PropTypes.number,
   sourceData: PropTypes.object,
   targetData: PropTypes.object,
-  'sourceData.sid': PropTypes.number,
-  'sourceData.did': PropTypes.number,
-  'targetData.sid': PropTypes.number,
-  'targetData.did': PropTypes.number,
 };

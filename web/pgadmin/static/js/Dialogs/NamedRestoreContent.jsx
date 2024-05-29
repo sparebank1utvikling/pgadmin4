@@ -9,10 +9,10 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import gettext from 'sources/gettext';
-import { Box } from '@material-ui/core';
+import { Box } from '@mui/material';
 import { DefaultButton, PrimaryButton } from '../components/Buttons';
-import CloseIcon from '@material-ui/icons/CloseRounded';
-import CheckRoundedIcon from '@material-ui/icons/CheckRounded';
+import CloseIcon from '@mui/icons-material/CloseRounded';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import PropTypes from 'prop-types';
 import { useModalStyles } from '../helpers/ModalProvider';
 import { InputText } from '../components/FormComponents';
@@ -44,7 +44,7 @@ export default function NamedRestoreContent({closeModal, onOK, setHeight}) {
 
   useEffect(()=>{
     setTimeout(()=>{
-      firstEleRef.current && firstEleRef.current.focus();
+      firstEleRef.current?.focus();
     }, 275);
   }, []);
 
@@ -84,7 +84,6 @@ export default function NamedRestoreContent({closeModal, onOK, setHeight}) {
 
 NamedRestoreContent.propTypes = {
   closeModal: PropTypes.func,
-  data: PropTypes.object,
   onOK: PropTypes.func,
   setHeight: PropTypes.func
 };

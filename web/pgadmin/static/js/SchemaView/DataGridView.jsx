@@ -10,14 +10,14 @@
 /* The DataGridView component is based on react-table component */
 
 import React, { useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Box } from '@material-ui/core';
-import { makeStyles } from '@material-ui/core/styles';
+import { Box } from '@mui/material';
+import { makeStyles } from '@mui/styles';
 import { PgIconButton } from '../components/Buttons';
-import AddIcon from '@material-ui/icons/AddOutlined';
+import AddIcon from '@mui/icons-material/AddOutlined';
 import { MappedCellControl } from './MappedControl';
-import DragIndicatorRoundedIcon from '@material-ui/icons/DragIndicatorRounded';
-import EditRoundedIcon from '@material-ui/icons/EditRounded';
-import DeleteRoundedIcon from '@material-ui/icons/DeleteRounded';
+import DragIndicatorRoundedIcon from '@mui/icons-material/DragIndicatorRounded';
+import EditRoundedIcon from '@mui/icons-material/EditRounded';
+import DeleteRoundedIcon from '@mui/icons-material/DeleteRounded';
 import { useTable, useFlexLayout, useResizeColumns, useSortBy, useExpanded, useGlobalFilter } from 'react-table';
 import clsx from 'clsx';
 import PropTypes from 'prop-types';
@@ -34,6 +34,7 @@ import { DepListenerContext } from './DepListener';
 import { useIsMounted } from '../custom_hooks';
 import { InputText } from '../components/FormComponents';
 import { usePgAdmin } from '../BrowserComponent';
+import { requestAnimationAndFocus } from '../utils';
 
 const useStyles = makeStyles((theme)=>({
   grid: {
@@ -221,6 +222,10 @@ function DataTableRow({index, row, totalRows, isResizing, isHovered, schema, sch
         }
       });
     });
+
+    // Try autofocus on newly added row.
+    requestAnimationAndFocus(rowRef.current?.querySelector('input'));
+
     return ()=>{
       /* Cleanup the listeners when unmounting */
       depListener?.removeDepListener(accessPath);
@@ -285,33 +290,31 @@ function DataTableRow({index, row, totalRows, isResizing, isHovered, schema, sch
   drop(rowRef);
 
   return useMemo(()=>
-    <>
-      <div {...row.getRowProps()} ref={rowRef} data-handler-id={handlerId}
-        className={isHovered ? classes.tableRowHovered : null}
-        data-test='data-table-row'
-      >
-        {row.cells.map((cell, ci) => {
-          let classNames = [classes.tableCell];
+    <div {...row.getRowProps()} ref={rowRef} data-handler-id={handlerId}
+      className={isHovered ? classes.tableRowHovered : null}
+      data-test='data-table-row'
+    >
+      {row.cells.map((cell, ci) => {
+        let classNames = [classes.tableCell];
 
-          let {modeSupported} = cell.column.field? getFieldMetaData(cell.column.field, schemaRef.current, {}, viewHelperProps) : {modeSupported: true};
+        let {modeSupported} = cell.column.field? getFieldMetaData(cell.column.field, schemaRef.current, {}, viewHelperProps) : {modeSupported: true};
 
-          if(typeof(cell.column.id) == 'string' && cell.column.id.startsWith('btn-')) {
-            classNames.push(classes.btnCell);
-          }
-          if(cell.column.id == 'btn-edit' && row.isExpanded) {
-            classNames.push(classes.expandedIconCell);
-          }
-          return (modeSupported &&
+        if(typeof(cell.column.id) == 'string' && cell.column.id.startsWith('btn-')) {
+          classNames.push(classes.btnCell);
+        }
+        if(cell.column.id == 'btn-edit' && row.isExpanded) {
+          classNames.push(classes.expandedIconCell);
+        }
+        return (modeSupported &&
             <div ref={cell.column.id == 'btn-reorder' ? dragHandleRef : null} key={ci} {...cell.getCellProps()} className={clsx(classNames)}>
               {cell.render('Cell', {
                 reRenderRow: ()=>{setKey((currKey)=>!currKey);}
               })}
             </div>
-          );
-        })}
-        <div className='hover-overlay'></div>
-      </div>
-    </>, depsMap);
+        );
+      })}
+      <div className='hover-overlay'></div>
+    </div>, depsMap);
 }
 
 export function DataGridHeader({label, canAdd, onAddClick, canSearch, onSearchTextChange}) {
@@ -656,7 +659,9 @@ export default function DataGridView({
                   {props.canEdit && row.isExpanded &&
                     <FormView value={row.original} viewHelperProps={viewHelperProps} dataDispatch={dataDispatch}
                       schema={schemaRef.current} accessPath={accessPath.concat([row.index])} isNested={true} className={classes.expandedForm}
-                      isDataGridForm={true}/>
+                      isDataGridForm={true} firstEleRef={(ele)=>{
+                        requestAnimationAndFocus(ele);
+                      }}/>
                   }
                 </React.Fragment>;
               })}

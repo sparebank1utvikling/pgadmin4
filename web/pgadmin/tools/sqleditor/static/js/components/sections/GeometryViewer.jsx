@@ -8,7 +8,7 @@
 //////////////////////////////////////////////////////////////
 import React, { useEffect, useRef }  from 'react';
 import ReactDOMServer from 'react-dom/server';
-import { makeStyles } from '@material-ui/styles';
+import { makeStyles } from '@mui/styles';
 import _ from 'lodash';
 import { MapContainer, TileLayer, LayersControl, GeoJSON, useMap } from 'react-leaflet';
 import Leaflet, { CRS } from 'leaflet';
@@ -18,7 +18,7 @@ import gettext from 'sources/gettext';
 import Theme from 'sources/Theme';
 import clsx from 'clsx';
 import PropTypes from 'prop-types';
-import { Box } from '@material-ui/core';
+import { Box } from '@mui/material';
 import { PANELS } from '../QueryToolConstants';
 import { QueryToolContext } from '../QueryToolComponent';
 
@@ -293,7 +293,7 @@ function TheMap({data}) {
       infoControl.current.addTo(mapObj);
     }
     resetLayersKey.current++;
-    return ()=>{infoControl.current && infoControl.current.remove();};
+    return ()=>{infoControl.current?.remove();};
   }, [data]);
   return (
     <>

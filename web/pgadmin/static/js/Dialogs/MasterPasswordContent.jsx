@@ -12,11 +12,11 @@ import PropTypes from 'prop-types';
 import gettext from 'sources/gettext';
 import url_for from 'sources/url_for';
 
-import { Box } from '@material-ui/core';
-import CloseIcon from '@material-ui/icons/CloseRounded';
-import DeleteForeverIcon from '@material-ui/icons/DeleteForever';
-import CheckRoundedIcon from '@material-ui/icons/CheckRounded';
-import HelpIcon from '@material-ui/icons/Help';
+import { Box } from '@mui/material';
+import CloseIcon from '@mui/icons-material/CloseRounded';
+import DeleteForeverIcon from '@mui/icons-material/DeleteForever';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
+import HelpIcon from '@mui/icons-material/Help';
 
 import { DefaultButton, PrimaryButton, PgIconButton } from '../components/Buttons';
 import { useModalStyles } from '../helpers/ModalProvider';
@@ -49,7 +49,7 @@ export default function MasterPasswordContent({ closeModal, onResetPassowrd, onO
 
   useEffect(() => {
     setTimeout(() => {
-      firstEleRef.current && firstEleRef.current.focus();
+      firstEleRef.current?.focus();
     }, 350);
   }, [firstEleRef.current]);
 
@@ -91,7 +91,7 @@ export default function MasterPasswordContent({ closeModal, onResetPassowrd, onO
           </Box>
           <Box marginTop='12px'>
             <InputText inputRef={firstEleRef} type="password" value={formData['password']} maxLength={null}
-              onChange={(e) => onTextChange(e, 'password')} onKeyDown={(e) => onKeyDown(e)}/>
+              onChange={(e) => onTextChange(e, 'password')} onKeyDown={(e) => onKeyDown(e)} controlProps={{autoComplete: 'new-password'}}/>
           </Box>
           <FormFooterMessage type={MESSAGE_TYPE.ERROR} message={data.errmsg} closable={false} style={{
             position: 'unset', padding: '12px 0px 0px'

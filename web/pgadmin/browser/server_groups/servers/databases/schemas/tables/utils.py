@@ -546,7 +546,6 @@ class BaseTableView(PGChildNodeView, BasePartitionTable, VacuumSettings):
                     BaseTableView._get_sub_module_data_for_compare(
                         self, sid, did, scid, data, row)
                     res[row['name']] = data
-                    res[row['name']] = data
 
             return True, res
 
@@ -2055,7 +2054,8 @@ class BaseTableView(PGChildNodeView, BasePartitionTable, VacuumSettings):
         _, lock_table_result = self.conn.execute_dict(sql)
 
         for row in lock_table_result['rows']:
-            if row['relation'].strip('\"') == data['name']:
+            if row['relation'] and \
+                    row['relation'].strip('\"') == data['name']:
 
                 sql = render_template(
                     "/".join([self.table_template_path,

@@ -18,7 +18,7 @@ import getApiInstance from '../../../../static/js/api_instance';
 import { CloudWizardEventsContext } from './CloudWizard';
 import {MESSAGE_TYPE } from '../../../../static/js/components/FormComponents';
 import gettext from 'sources/gettext';
-import { makeStyles } from '@material-ui/core/styles';
+import { makeStyles } from '@mui/styles';
 
 const useStyles = makeStyles(() =>
   ({
@@ -61,7 +61,7 @@ export function AzureCredentials(props) {
           })
           .catch((error) => {
             _eventBus.fireEvent('SET_ERROR_MESSAGE_FOR_CLOUD_WIZARD',[MESSAGE_TYPE.ERROR, gettext(`Error while verifying Microsoft Azure: ${error}`)]);
-            reject(false);
+            reject(new Error(gettext(error)));
           });
         });
       },
@@ -103,8 +103,6 @@ export function AzureCredentials(props) {
   />;
 }
 AzureCredentials.propTypes = {
-  nodeInfo: PropTypes.object,
-  nodeData: PropTypes.object,
   cloudProvider: PropTypes.string,
   setAzureCredData: PropTypes.func
 };
@@ -206,7 +204,6 @@ AzureInstanceDetails.propTypes = {
   cloudProvider: PropTypes.string,
   setAzureInstanceData: PropTypes.func,
   hostIP: PropTypes.string,
-  subscriptions: PropTypes.array,
   azureInstanceData: PropTypes.object
 };
 

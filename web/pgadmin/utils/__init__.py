@@ -14,13 +14,14 @@ import subprocess
 from collections import defaultdict
 from operator import attrgetter
 
+from pathlib import Path
 from flask import Blueprint, current_app, url_for
 from flask_babel import gettext
 from flask_security import current_user, login_required
 from flask_security.utils import get_post_login_redirect, \
     get_post_logout_redirect
 from threading import Lock
-
+import config
 from .paths import get_storage_directory
 from .preferences import Preferences
 from pgadmin.utils.constants import UTILITIES_ARRAY, USER_NOT_FOUND, \
@@ -308,10 +309,17 @@ def does_utility_exist(file):
     :return:
     """
     error_msg = None
+
     if file is None:
         error_msg = gettext("Utility file not found. Please correct the Binary"
                             " Path in the Preferences dialog")
         return error_msg
+
+    if Path(config.STORAGE_DIR) == Path(file) or \
+            Path(config.STORAGE_DIR) in Path(file).parents:
+        error_msg = gettext("Please correct the Binary Path in the Preferences"
+                            " dialog. pgAdmin storage directory can not be a"
+                            " utility binary directory.")
 
     if not os.path.exists(file):
         error_msg = gettext("'%s' file not found. Please correct the Binary"
@@ -364,7 +372,8 @@ def get_binary_path_versions(binary_path: str) -> dict:
 
 
 def set_binary_path(binary_path, bin_paths, server_type,
-                    version_number=None, set_as_default=False):
+                    version_number=None, set_as_default=False,
+                    is_fixed_path=False):
     """
     This function is used to iterate through the utilities and set the
     default binary path.
@@ -394,6 +403,8 @@ def set_binary_path(binary_path, bin_paths, server_type,
                         if path_with_dir is not None else binary_path
                     if set_as_default:
                         path['isDefault'] = True
+                    # Whether the fixed path in the config file exists or not
+                    path['isFixed'] = is_fixed_path
                     break
             break
         except Exception:
@@ -491,8 +502,10 @@ def dump_database_servers(output_file, selected_servers,
             add_value(attr_dict, "ConnectionParameters",
                       server.connection_params)
 
-            # if desktop mode
-            if not current_app.config['SERVER_MODE']:
+            # if desktop mode or server mode with
+            # ENABLE_SERVER_PASS_EXEC_CMD flag is True
+            if not current_app.config['SERVER_MODE'] or \
+                    current_app.config['ENABLE_SERVER_PASS_EXEC_CMD']:
                 add_value(attr_dict, "PasswordExecCommand",
                           server.passexec_cmd)
                 add_value(attr_dict, "PasswordExecExpiration",
@@ -726,8 +739,10 @@ def load_database_servers(input_file, selected_servers,
 
             new_server.kerberos_conn = obj.get("KerberosAuthentication", None)
 
-            # if desktop mode
-            if not current_app.config['SERVER_MODE']:
+            # if desktop mode or server mode with
+            # ENABLE_SERVER_PASS_EXEC_CMD flag is True
+            if not current_app.config['SERVER_MODE'] or \
+                    current_app.config['ENABLE_SERVER_PASS_EXEC_CMD']:
                 new_server.passexec_cmd = obj.get("PasswordExecCommand", None)
                 new_server.passexec_expiration = obj.get(
                     "PasswordExecExpiration", None)

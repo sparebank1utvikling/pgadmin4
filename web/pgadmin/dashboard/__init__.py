@@ -12,7 +12,7 @@ import math
 from functools import wraps
 from flask import render_template, url_for, Response, g, request
 from flask_babel import gettext
-from flask_security import login_required
+from pgadmin.user_login_check import pga_login_required
 import json
 from pgadmin.utils import PgAdminModule
 from pgadmin.utils.ajax import make_response as ajax_response,\
@@ -245,6 +245,8 @@ class DashboardModule(PgAdminModule):
             'dashboard.system_statistics',
             'dashboard.system_statistics_sid',
             'dashboard.system_statistics_did',
+            'dashboard.replication_slots',
+            'dashboard.replication_stats',
         ]
 
 
@@ -312,7 +314,7 @@ def check_precondition(f):
 
 
 @blueprint.route("/dashboard.js")
-@login_required
+@pga_login_required
 def script():
     """render the required javascript"""
     return Response(
@@ -328,7 +330,7 @@ def script():
 @blueprint.route('/', endpoint='index')
 @blueprint.route('/<int:sid>', endpoint='get_by_sever_id')
 @blueprint.route('/<int:sid>/<int:did>', endpoint='get_by_database_id')
-@login_required
+@pga_login_required
 def index(sid=None, did=None):
     """
     Renders the welcome, server or database dashboard
@@ -444,7 +446,7 @@ def get_long_running_query_status(activities):
                  endpoint='dashboard_stats_sid')
 @blueprint.route('/dashboard_stats/<int:sid>/<int:did>',
                  endpoint='dashboard_stats_did')
-@login_required
+@pga_login_required
 @check_precondition
 def dashboard_stats(sid=None, did=None):
     resp_data = {}
@@ -459,7 +461,7 @@ def dashboard_stats(sid=None, did=None):
             "/".join([g.template_path, 'dashboard_stats.sql']), did=did,
             chart_names=chart_names,
         )
-        status, res = g.conn.execute_dict(sql)
+        _, res = g.conn.execute_dict(sql)
 
         for chart_row in res['rows']:
             resp_data[chart_row['chart_name']] = json.loads(
@@ -476,7 +478,7 @@ def dashboard_stats(sid=None, did=None):
 @blueprint.route(
     '/activity/<int:sid>/<int:did>', endpoint='get_activity_by_database_id'
 )
-@login_required
+@pga_login_required
 @check_precondition
 def activity(sid=None, did=None):
     """
@@ -492,7 +494,7 @@ def activity(sid=None, did=None):
 @blueprint.route(
     '/locks/<int:sid>/<int:did>', endpoint='get_locks_by_database_id'
 )
-@login_required
+@pga_login_required
 @check_precondition
 def locks(sid=None, did=None):
     """
@@ -508,7 +510,7 @@ def locks(sid=None, did=None):
 @blueprint.route(
     '/prepared/<int:sid>/<int:did>', endpoint='get_prepared_by_database_id'
 )
-@login_required
+@pga_login_required
 @check_precondition
 def prepared(sid=None, did=None):
     """
@@ -521,7 +523,7 @@ def prepared(sid=None, did=None):
 
 @blueprint.route('/config/', endpoint='config')
 @blueprint.route('/config/<int:sid>', endpoint='get_config_by_server_id')
-@login_required
+@pga_login_required
 @check_precondition
 def config(sid=None):
     """
@@ -538,7 +540,7 @@ def config(sid=None):
 @blueprint.route(
     '/cancel_query/<int:sid>/<int:did>/<int:pid>', methods=['DELETE']
 )
-@login_required
+@pga_login_required
 @check_precondition
 def cancel_query(sid=None, did=None, pid=None):
     """
@@ -565,7 +567,7 @@ def cancel_query(sid=None, did=None, pid=None):
 @blueprint.route(
     '/terminate_session/<int:sid>/<int:did>/<int:pid>', methods=['DELETE']
 )
-@login_required
+@pga_login_required
 @check_precondition
 def terminate_session(sid=None, did=None, pid=None):
     """
@@ -593,7 +595,7 @@ def terminate_session(sid=None, did=None, pid=None):
                  endpoint='check_system_statistics_sid', methods=['GET'])
 @blueprint.route('check_extension/system_statistics/<int:sid>/<int:did>',
                  endpoint='check_system_statistics_did', methods=['GET'])
-@login_required
+@pga_login_required
 @check_precondition
 def check_system_statistics(sid=None, did=None):
     sql = "SELECT * FROM pg_extension WHERE extname = 'system_stats';"
@@ -618,7 +620,7 @@ def check_system_statistics(sid=None, did=None):
                  endpoint='system_statistics_sid', methods=['GET'])
 @blueprint.route('/system_statistics/<int:sid>/<int:did>',
                  endpoint='system_statistics_did', methods=['GET'])
-@login_required
+@pga_login_required
 @check_precondition
 def system_statistics(sid=None, did=None):
     resp_data = {}
@@ -644,5 +646,53 @@ def system_statistics(sid=None, did=None):
 
     return ajax_response(
         response=resp_data,
+        status=200
+    )
+
+
+@blueprint.route('/replication_stats/<int:sid>',
+                 endpoint='replication_stats', methods=['GET'])
+@pga_login_required
+@check_precondition
+def replication_stats(sid=None):
+    """
+    This function is used to list all the Replication slots of the cluster
+    """
+
+    if not sid:
+        return internal_server_error(errormsg='Server ID not specified.')
+
+    sql = render_template("/".join([g.template_path, 'replication_stats.sql']))
+    status, res = g.conn.execute_dict(sql)
+
+    if not status:
+        return internal_server_error(errormsg=str(res))
+
+    return ajax_response(
+        response=res['rows'],
+        status=200
+    )
+
+
+@blueprint.route('/replication_slots/<int:sid>',
+                 endpoint='replication_slots', methods=['GET'])
+@pga_login_required
+@check_precondition
+def replication_slots(sid=None):
+    """
+    This function is used to list all the Replication slots of the cluster
+    """
+
+    if not sid:
+        return internal_server_error(errormsg='Server ID not specified.')
+
+    sql = render_template("/".join([g.template_path, 'replication_slots.sql']))
+    status, res = g.conn.execute_dict(sql)
+
+    if not status:
+        return internal_server_error(errormsg=str(res))
+
+    return ajax_response(
+        response=res['rows'],
         status=200
     )

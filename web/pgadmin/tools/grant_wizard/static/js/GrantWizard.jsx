@@ -11,8 +11,8 @@ import gettext from 'sources/gettext';
 import _ from 'lodash';
 import url_for from 'sources/url_for';
 import React from 'react';
-import { Box } from '@material-ui/core';
-import { makeStyles } from '@material-ui/core/styles';
+import { Box } from '@mui/material';
+import { makeStyles } from '@mui/styles';
 import Wizard from '../../../../static/js/helpers/wizard/Wizard';
 import WizardStep from '../../../../static/js/helpers/wizard/WizardStep';
 import PgTable from 'sources/components/PgTable';
@@ -115,9 +115,9 @@ export default function GrantWizard({ sid, did, nodeInfo, nodeData, onClose }) {
   let steps = [gettext('Object Selection'), gettext('Privilege Selection'), gettext('Review')];
   const [selectedObject, setSelectedObject] = React.useState([]);
   const [selectedAcl, setSelectedAcl] = React.useState({});
-  const [msqlData, setSQL] = React.useState('');
+  const [msqlData, setMSQLData] = React.useState('');
   const [loaderText, setLoaderText] = React.useState('');
-  const [tablebData, setTableData] = React.useState([]);
+  const [tableData, setTableData] = React.useState([]);
   const [privOptions, setPrivOptions] = React.useState({});
   const [privileges, setPrivileges] = React.useState([]);
   const [privSchemaInstance, setPrivSchemaInstance] = React.useState();
@@ -201,7 +201,7 @@ export default function GrantWizard({ sid, did, nodeInfo, nodeData, onClose }) {
       };
       api.post(msql_url, post_data)
         .then(res => {
-          setSQL(res.data.data);
+          setMSQLData(res.data.data);
           setLoaderText('');
         })
         .catch(() => {
@@ -319,7 +319,7 @@ export default function GrantWizard({ sid, did, nodeInfo, nodeData, onClose }) {
             className={classes.table}
             height={window.innerHeight - 450}
             columns={columns}
-            data={tablebData}
+            data={tableData}
             isSelectRow={true}
             getSelectedRows={getTableSelectedRows}>
           </PgTable>
@@ -363,5 +363,3 @@ GrantWizard.propTypes = {
   nodeData: PropTypes.object,
   onClose: PropTypes.func
 };
-
-

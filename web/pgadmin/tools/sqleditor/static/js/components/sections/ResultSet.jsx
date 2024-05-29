@@ -15,7 +15,7 @@ import getApiInstance, { parseApiError } from '../../../../../../static/js/api_i
 import { QueryToolContext, QueryToolEventsContext } from '../QueryToolComponent';
 import gettext from 'sources/gettext';
 import Loader from 'sources/components/Loader';
-import { Box } from '@material-ui/core';
+import { Box } from '@mui/material';
 import { ResultSetToolbar } from './ResultSetToolbar';
 import { LayoutDockerContext } from '../../../../../../static/js/helpers/Layout';
 import { GeometryViewer } from './GeometryViewer';
@@ -25,7 +25,7 @@ import { getBrowser } from '../../../../../../static/js/utils';
 import CopyData from '../QueryToolDataGrid/CopyData';
 import moment from 'moment';
 import ConfirmSaveContent from '../../../../../../static/js/Dialogs/ConfirmSaveContent';
-import { makeStyles } from '@material-ui/styles';
+import { makeStyles } from '@mui/styles';
 import EmptyPanelMessage from '../../../../../../static/js/components/EmptyPanelMessage';
 import { GraphVisualiser } from './GraphVisualiser';
 import { usePgAdmin } from '../../../../../../static/js/BrowserComponent';
@@ -82,8 +82,7 @@ export class ResultSetUtils {
 
   static extractErrorMessage(httpMessage) {
     let msg = httpMessage.errormsg;
-    if (httpMessage.responseJSON !== undefined &&
-      httpMessage.responseJSON.errormsg !== undefined)
+    if (httpMessage.responseJSON?.errormsg !== undefined)
       msg = httpMessage.responseJSON.errormsg;
 
     return msg;
@@ -203,7 +202,6 @@ export class ResultSetUtils {
     }
     try {
       let {data: httpMessageData} = await this.postExecutionApi(query, explainObject, flags.isQueryTool, flags.reconnect);
-      this.eventBus.fireEvent(QUERY_TOOL_EVENTS.SET_CONNECTION_STATUS, httpMessageData.data.transaction_status);
 
       if (ResultSetUtils.isSqlCorrect(httpMessageData)) {
         this.setStartData(httpMessageData.data);
@@ -282,7 +280,7 @@ export class ResultSetUtils {
   handlePollError(error, explainObject, flags) {
     this.eventBus.fireEvent(QUERY_TOOL_EVENTS.EXECUTION_END);
     this.eventBus.fireEvent(QUERY_TOOL_EVENTS.FOCUS_PANEL, PANELS.MESSAGES);
-    this.eventBus.fireEvent(QUERY_TOOL_EVENTS.SET_CONNECTION_STATUS, CONNECTION_STATUS.TRANSACTION_STATUS_INERROR);
+    this.eventBus.fireEvent(QUERY_TOOL_EVENTS.SET_CONNECTION_STATUS, error.response.data.data?.transaction_status);
     if (!flags.external) {
       this.eventBus.fireEvent(QUERY_TOOL_EVENTS.HIGHLIGHT_ERROR, parseApiError(error, true));
     }
@@ -633,7 +631,7 @@ export class ResultSetUtils {
       && data.types[0] && data.types[0].typname === 'json') {
       /* json is sent as text, parse it */
       let planJson = JSON.parse(data.result[0][0]);
-      if (planJson && planJson[0] && planJson[0].hasOwnProperty('Plan') &&
+      if (planJson?.[0] && planJson?.[0].hasOwnProperty('Plan') &&
             _.isObject(planJson[0]['Plan'])
       ) {
         return planJson;
@@ -1188,17 +1186,15 @@ export function ResultSet() {
       let clientPK = row[rsu.current.clientPK];
       if(clientPK in dataChangeStore.deleted) {
         remove.push(clientPK);
-      } else {
+      } else if(clientPK in dataChangeStore.added) {
         /* If deleted from newly added */
-        if(clientPK in dataChangeStore.added) {
-          removeNewlyAdded.push(clientPK);
-        } else {
-          let primaryKeys = {};
-          Object.keys(queryData.primary_keys).forEach((k)=>{
-            primaryKeys[k] = row[k];
-          });
-          add[clientPK] = primaryKeys;
-        }
+        removeNewlyAdded.push(clientPK);
+      } else {
+        let primaryKeys = {};
+        Object.keys(queryData.primary_keys).forEach((k)=>{
+          primaryKeys[k] = row[k];
+        });
+        add[clientPK] = primaryKeys;
       }
     }
     if(removeNewlyAdded.length > 0) {

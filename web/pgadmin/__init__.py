@@ -50,7 +50,7 @@ from pgadmin.utils.csrf import pgCSRFProtect
 from pgadmin import authenticate
 from pgadmin.utils.security_headers import SecurityHeaders
 from pgadmin.utils.constants import KERBEROS, OAUTH2, INTERNAL, LDAP, WEBSERVER
-
+from jsonformatter import JsonFormatter
 
 # Explicitly set the mime-types so that a corrupted windows registry will not
 # affect pgAdmin 4 to be load properly. This will avoid the issues that may
@@ -260,14 +260,26 @@ def create_app(app_name=None):
                                          config.LOG_ROTATION_MAX_LOG_FILES)
 
         fh.setLevel(config.FILE_LOG_LEVEL)
-        fh.setFormatter(logging.Formatter(config.FILE_LOG_FORMAT))
+
+        if config.JSON_LOGGER:
+            json_formatter = JsonFormatter(config.FILE_LOG_FORMAT_JSON)
+            fh.setFormatter(json_formatter)
+        else:
+            fh.setFormatter(logging.Formatter(config.FILE_LOG_FORMAT))
+
         app.logger.addHandler(fh)
         logger.addHandler(fh)
 
     # Console logging
     ch = logging.StreamHandler()
     ch.setLevel(config.CONSOLE_LOG_LEVEL)
-    ch.setFormatter(logging.Formatter(config.CONSOLE_LOG_FORMAT))
+
+    if config.JSON_LOGGER:
+        json_formatter = JsonFormatter(config.CONSOLE_LOG_FORMAT_JSON)
+        ch.setFormatter(json_formatter)
+    else:
+        ch.setFormatter(logging.Formatter(config.CONSOLE_LOG_FORMAT))
+
     app.logger.addHandler(ch)
     logger.addHandler(ch)
 
@@ -493,13 +505,10 @@ def create_app(app_name=None):
         'WTF_CSRF_TIME_LIMIT': getattr(config, 'CSRF_TIME_LIMIT', None),
         'WTF_CSRF_METHODS': ['GET', 'POST', 'PUT', 'DELETE'],
         # Disable deliverable check for email addresss
-        'SECURITY_EMAIL_VALIDATOR_ARGS': config.SECURITY_EMAIL_VALIDATOR_ARGS
+        'SECURITY_EMAIL_VALIDATOR_ARGS': config.SECURITY_EMAIL_VALIDATOR_ARGS,
+        # Disable CSRF for unauthenticated endpoints
+        'SECURITY_CSRF_IGNORE_UNAUTH_ENDPOINTS': True
     }))
-
-    if 'SCRIPT_NAME' in os.environ and os.environ["SCRIPT_NAME"]:
-        app.config.update(dict({
-            'APPLICATION_ROOT': os.environ["SCRIPT_NAME"]
-        }))
 
     app.config.update(dict({
         'INTERNAL': INTERNAL,
@@ -512,7 +521,12 @@ def create_app(app_name=None):
     security.init_app(app, user_datastore)
 
     # register custom unauthorised handler.
-    app.login_manager.unauthorized_handler(pga_unauthorised)
+    if sys.version_info < (3, 8):
+        app.login_manager.unauthorized_handler(pga_unauthorised)
+    else:
+        # Flask-Security-Too > 5.4.* requires custom unauth handeler
+        # to be registeres with it.
+        security.unauthn_handler(pga_unauthorised)
 
     # Set the permanent session lifetime to the specified value in config file.
     app.permanent_session_lifetime = timedelta(
@@ -833,7 +847,7 @@ def create_app(app_name=None):
                     config.COOKIE_DEFAULT_DOMAIN != 'localhost':
                 domain['domain'] = config.COOKIE_DEFAULT_DOMAIN
             response.set_cookie('PGADMIN_INT_KEY', value=request.args['key'],
-                                path=config.COOKIE_DEFAULT_PATH,
+                                path=config.SESSION_COOKIE_PATH,
                                 secure=config.SESSION_COOKIE_SECURE,
                                 httponly=config.SESSION_COOKIE_HTTPONLY,
                                 samesite=config.SESSION_COOKIE_SAMESITE,
@@ -882,9 +896,6 @@ def create_app(app_name=None):
     if not config.DEBUG and config.SERVER_MODE:
         from flask_compress import Compress
         Compress(app)
-
-    from pgadmin.misc.themes import themes
-    themes(app)
 
     @app.context_processor
     def inject_blueprint():

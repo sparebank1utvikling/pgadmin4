@@ -6,7 +6,7 @@
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
-import { makeStyles } from '@material-ui/core';
+import { makeStyles } from '@mui/styles';
 import React from 'react';
 import SchemaView from '../../../../../../static/js/SchemaView';
 import BaseUISchema from '../../../../../../static/js/SchemaView/base_schema.ui';
@@ -130,7 +130,7 @@ export default function FilterDialog({onClose, onSave}) {
     });
   };
 
-  return (<>
+  return (
     <SchemaView
       formType={'dialog'}
       getInitData={getInitData}
@@ -147,7 +147,7 @@ export default function FilterDialog({onClose, onSave}) {
       formClassName={classes.root}
       checkDirtyOnEnableSave={true}
     />
-  </>);
+  );
 }
 
 FilterDialog.propTypes = {

@@ -6,18 +6,18 @@
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
-import { makeStyles } from '@material-ui/styles';
-import React, {useContext, useCallback, useEffect } from 'react';
+import { makeStyles } from '@mui/styles';
+import React, {useContext, useCallback, useEffect, useMemo } from 'react';
+import { format } from 'sql-formatter';
 import { QueryToolContext, QueryToolEventsContext } from '../QueryToolComponent';
-import CodeMirror from '../../../../../../static/js/components/CodeMirror';
+import CodeMirror from '../../../../../../static/js/components/ReactCodeMirror';
 import {PANELS, QUERY_TOOL_EVENTS} from '../QueryToolConstants';
 import url_for from 'sources/url_for';
 import { LayoutDockerContext, LAYOUT_EVENTS } from '../../../../../../static/js/helpers/Layout';
 import ConfirmSaveContent from '../../../../../../static/js/Dialogs/ConfirmSaveContent';
 import gettext from 'sources/gettext';
-import OrigCodeMirror from 'bundled_codemirror';
 import { isMac } from '../../../../../../static/js/keyboard_shortcuts';
-import { checkTrojanSource } from '../../../../../../static/js/utils';
+import { checkTrojanSource, isShortcutValue, toCodeMirrorKey } from '../../../../../../static/js/utils';
 import { parseApiError } from '../../../../../../static/js/api_instance';
 import { usePgAdmin } from '../../../../../../static/js/BrowserComponent';
 import ConfirmPromotionContent from '../dialogs/ConfirmPromotionContent';
@@ -31,211 +31,33 @@ const useStyles = makeStyles(()=>({
   }
 }));
 
-function registerAutocomplete(api, transId, sqlEditorPref, onFailure) {
-  let timeoutId;
-  let loadingEle;
-  let prevSearch = null;
-  OrigCodeMirror.registerHelper('hint', 'sql', function (editor) {
-    let data = [],
-      doc = editor.getDoc(),
-      cur = doc.getCursor(),
-      // function context
-      ctx = {
-        editor: editor,
-        // URL for auto-complete
-        url: url_for('sqleditor.autocomplete', {
-          'trans_id': transId,
-        }),
-        data: data,
-        // Get the line number in the cursor position
-        current_line: cur.line,
-        /*
-         * Render function for hint to add our own class
-         * and icon as per the object type.
-         */
-        hint_render: function (elt, data_arg, cur_arg) {
-          let el = document.createElement('span');
-          switch (cur_arg.type) {
-          case 'database':
-            el.className = 'sqleditor-hint pg-icon-' + cur_arg.type;
-            break;
-          case 'datatype':
-            el.className = 'sqleditor-hint icon-type';
-            break;
-          case 'keyword':
-            el.className = 'sqleditor-hint icon-key';
-            break;
-          case 'table alias':
-            el.className = 'sqleditor-hint icon-at';
-            break;
-          case 'join':
-          case 'fk join':
-            el.className = 'sqleditor-hint icon-join';
-            break;
-          default:
-            el.className = 'sqleditor-hint icon-' + cur_arg.type;
-          }
-
-          el.appendChild(document.createTextNode(cur_arg.text));
-          elt.appendChild(el);
-        },
-      };
-
-    data.push(doc.getValue());
-
-    if (!editor.state.autoCompleteList)
-      editor.state.autoCompleteList = [];
-
-    // This function is used to show the loading element until response comes.
-    const showLoading = (editor)=>{
-      if (editor.getInputField().getAttribute('aria-activedescendant') != null) {
-        hideLoading();
-        return;
-      }
-
-      if(!loadingEle) {
-        let ownerDocument = editor.getInputField().ownerDocument;
-        loadingEle = ownerDocument.createElement('div');
-        loadingEle.className = 'CodeMirror-hints';
-        let iconEle = ownerDocument.createElement('div');
-        iconEle.className = 'icon-spinner';
-        iconEle.style.marginTop = '4px';
-        iconEle.style.marginLeft = '2px';
-
-        let spanEle = ownerDocument.createElement('span');
-        spanEle.innerText = gettext('Loading...');
-        spanEle.style.marginLeft = '17px';
-
-        iconEle.appendChild(spanEle);
-        loadingEle.appendChild(iconEle);
-        ownerDocument.body.appendChild(loadingEle);
-      }
-      let pos = editor.cursorCoords(true);
-      loadingEle.style.left = pos.left + 'px';
-      loadingEle.style.top = pos.bottom + 'px';
-      loadingEle.style.height = '25px';
-    };
-
-    // This function is used to hide the loading element.
-    const hideLoading = ()=>{
-      loadingEle?.parentNode?.removeChild(loadingEle);
-      loadingEle = null;
-    };
-
-    return {
-      then: function (cb) {
-        let self_local = this;
-
-        // This function is used to filter the data and call the callback
-        // function with that filtered data.
-        function setAutoCompleteData() {
-          const searchRe = new RegExp('^"{0,1}' + search, 'i');
-          let filterData = self_local.editor.state.autoCompleteList.filter((item)=>{
-            return searchRe.test(item.text);
+async function registerAutocomplete(editor, api, transId) {
+  editor.registerAutocomplete((context, onAvailable)=>{
+    return new Promise((resolve, reject)=>{
+      const url = url_for('sqleditor.autocomplete', {
+        'trans_id': transId,
+      });
+      const word = context.matchBefore(/\w*/);
+      const fullSql = context.state.doc.toString();
+      const sqlTillCur = context.state.sliceDoc(0, context.state.selection.main.head);
+      api.post(url, JSON.stringify([fullSql, sqlTillCur]))
+        .then((res) => {
+          onAvailable();
+          resolve({
+            from: word.from,
+            options: Object.keys(res.data.data.result).map((key)=>({
+              label: key, type: res.data.data.result[key].object_type
+            })),
+            validFor: (text, from)=>{
+              return text.startsWith(fullSql.slice(from));
+            }
           });
-
-          cb({
-            list: filterData,
-            from: {
-              line: self_local.current_line,
-              ch: start,
-            },
-            to: {
-              line: self_local.current_line,
-              ch: end,
-            },
-          });
-        }
-
-        /*
-         * Below logic find the start and end point
-         * to replace the selected auto complete suggestion.
-         */
-        let token = self_local.editor.getTokenAt(cur),
-          start, end, search;
-        if (token.end > cur.ch) {
-          token.end = cur.ch;
-          token.string = token.string.slice(0, cur.ch - token.start);
-        }
-
-        if (token.string.match(/^[."`\w@]\w*$/)) {
-          search = token.string;
-          start = token.start;
-          end = token.end;
-        } else {
-          start = end = cur.ch;
-          search = '';
-        }
-
-        /*
-         * Added 1 in the start position if search string
-         * started with "." or "`" else auto complete of code mirror
-         * will remove the "." when user select any suggestion.
-         */
-        if (search.charAt(0) == '.' || search.charAt(0) == '``') {
-          start += 1;
-          search = search.slice(1);
-        }
-
-        // Handled special case when autocomplete on keypress is off,
-        // the query is cleared, and retype some other words and press CTRL/CMD + Space.
-        if (!sqlEditorPref.autocomplete_on_key_press && start == 0)
-          self_local.editor.state.autoCompleteList = [];
-
-        // Clear the auto complete list if previous token/search is blank or dot.
-        if (prevSearch == '' || prevSearch == '.' || prevSearch == '"')
-          self_local.editor.state.autoCompleteList = [];
-
-        prevSearch = search;
-        // Get the text from start to the current cursor position.
-        self_local.data.push(
-          doc.getRange({
-            line: 0,
-            ch: 0,
-          }, {
-            line: self_local.current_line,
-            ch: token.start + 1,
-          })
-        );
-
-        // If search token is not empty and auto complete list have some data
-        // then no need to send the request to the backend to fetch the data.
-        // auto complete the data using already fetched list.
-        if (search != '' && self_local.editor.state.autoCompleteList.length != 0) {
-          setAutoCompleteData();
-          return;
-        }
-
-        //Show loading indicator
-        showLoading(self_local.editor);
-
-        timeoutId && clearTimeout(timeoutId);
-        timeoutId = setTimeout(()=> {
-          timeoutId = null;
-          // Make ajax call to find the autocomplete data
-          api.post(self_local.url, JSON.stringify(self_local.data))
-            .then((res) => {
-              hideLoading();
-              let result = [];
-
-              _.each(res.data.data.result, function (obj, key) {
-                result.push({
-                  text: key,
-                  type: obj.object_type,
-                  render: self_local.hint_render,
-                });
-              });
-
-              self_local.editor.state.autoCompleteList = result;
-              setAutoCompleteData();
-            })
-            .catch((err) => {
-              hideLoading();
-              onFailure?.(err);
-            });
-        }, 300);
-      }.bind(ctx),
-    };
+        })
+        .catch((err) => {
+          onAvailable();
+          reject(err);
+        });
+    });
   });
 }
 
@@ -246,31 +68,24 @@ export default function Query() {
   const queryToolCtx = useContext(QueryToolContext);
   const layoutDocker = useContext(LayoutDockerContext);
   const lastCursorPos = React.useRef();
-  const lastSavedText = React.useRef('');
-  const markedLine = React.useRef(0);
-  const marker = React.useRef();
   const pgAdmin = usePgAdmin();
   const preferencesStore = usePreferences();
 
-  const removeHighlightError = (cmObj)=>{
-    // Remove already existing marker
-    marker.current?.clear();
-    cmObj.removeLineClass(markedLine.current, 'wrap', 'CodeMirror-activeline-background');
-    markedLine.current = 0;
-  };
+  const queryToolPref = queryToolCtx.preferences.sqleditor;
+
   const highlightError = (cmObj, {errormsg: result, data})=>{
     let errorLineNo = 0,
       startMarker = 0,
       endMarker = 0,
-      selectedLineNo = 0,
+      selectedLineNo = 1,
       origQueryLen = cmObj.getValue().length;
 
-    removeHighlightError(cmObj);
+    cmObj.removeErrorMark();
 
     // In case of selection we need to find the actual line no
     if (cmObj.getSelection().length > 0) {
-      selectedLineNo = cmObj.getCursor(true).line;
-      origQueryLen = cmObj.getLine(selectedLineNo).length;
+      selectedLineNo = cmObj.getCurrentLineNo();
+      origQueryLen = cmObj.line(selectedLineNo).length;
     }
 
     // Fetch the LINE string using regex from the result
@@ -280,8 +95,8 @@ export default function Query() {
 
     // If line and character is null then no need to mark
     if (line != null && char != null) {
-      errorLineNo = (parseInt(line[1]) - 1) + selectedLineNo;
-      let errorCharNo = (parseInt(char[1]) - 1);
+      errorLineNo = parseInt(line[1]) + selectedLineNo - 1;
+      let errorCharNo = parseInt(char[1]) - 1;
 
       /* If explain query has been run we need to
         calculate the character number.
@@ -297,8 +112,8 @@ export default function Query() {
         * have also added 1 per line for the "\n" character.
         */
       let prevLineChars = 0;
-      for (let i = selectedLineNo > 0 ? selectedLineNo : 0; i < errorLineNo; i++)
-        prevLineChars += cmObj.getLine(i).length + 1;
+      for (let i = selectedLineNo; i < errorLineNo; i++)
+        prevLineChars += cmObj.getLine(i).length;
 
       /* Marker starting point for the individual line is
         * equal to error character index minus total no of
@@ -315,18 +130,14 @@ export default function Query() {
         endMarker = errorLine.length;
 
       // Mark the error text
-      marker.current = cmObj.markText({
+      cmObj.setErrorMark({
         line: errorLineNo,
-        ch: startMarker,
+        pos: startMarker,
       }, {
         line: errorLineNo,
-        ch: endMarker,
-      }, {
-        className: 'sql-editor-mark',
+        pos: endMarker,
       });
 
-      markedLine.current = errorLineNo;
-      cmObj.addLineClass(errorLineNo, 'wrap', 'CodeMirror-activeline-background');
       cmObj.focus();
       cmObj.setCursor(errorLineNo, endMarker);
     }
@@ -363,7 +174,7 @@ export default function Query() {
       if(result) {
         highlightError(editor.current, result);
       } else {
-        removeHighlightError(editor.current);
+        editor.current.removeErrorMark();
       }
     });
 
@@ -380,7 +191,7 @@ export default function Query() {
         editor.current.setValue(res.data);
         //Check the file content for Trojan Source
         checkTrojanSource(res.data);
-        lastSavedText.current = res.data;
+        editor.current.markClean();
         eventBus.fireEvent(QUERY_TOOL_EVENTS.LOAD_FILE_DONE, fileName, true);
       }).catch((err)=>{
         eventBus.fireEvent(QUERY_TOOL_EVENTS.LOAD_FILE_DONE, null, false);
@@ -389,12 +200,11 @@ export default function Query() {
     });
 
     eventBus.registerListener(QUERY_TOOL_EVENTS.SAVE_FILE, (fileName)=>{
-      let editorValue = editor.current.getValue();
       queryToolCtx.api.post(url_for('sqleditor.save_file'), {
         'file_name': decodeURI(fileName),
         'file_content': editor.current.getValue(),
       }).then(()=>{
-        lastSavedText.current = editorValue;
+        editor.current.markClean();
         eventBus.fireEvent(QUERY_TOOL_EVENTS.SAVE_FILE_DONE, fileName, true);
         pgAdmin.Browser.notifier.success(gettext('File saved successfully.'));
       }).catch((err)=>{
@@ -404,7 +214,21 @@ export default function Query() {
     });
 
     eventBus.registerListener(QUERY_TOOL_EVENTS.EDITOR_EXEC_CMD, (cmd='')=>{
-      editor.current?.execCommand(cmd);
+      if(cmd == 'gotoLineCol') {
+        editor.current?.focus();
+        let key = {
+          keyCode: 76, metaKey: false, ctrlKey: true, shiftKey: false, altKey: false,
+        };
+        if(isMac()) {
+          key.metaKey = true;
+          key.ctrlKey = false;
+          key.shiftKey = false;
+          key.altKey = false;
+        }
+        editor.current?.fireDOMEvent(new KeyboardEvent('keydown', key));
+      } else {
+        editor.current?.execCommand(cmd);
+      }
     });
     eventBus.registerListener(QUERY_TOOL_EVENTS.COPY_TO_EDITOR, (text)=>{
       editor.current?.setValue(text);
@@ -417,7 +241,7 @@ export default function Query() {
     eventBus.registerListener(QUERY_TOOL_EVENTS.EDITOR_FIND_REPLACE, (replace=false)=>{
       editor.current?.focus();
       let key = {
-        keyCode: 70, metaKey: false, ctrlKey: true, shiftKey: replace, altKey: false,
+        keyCode: 70, metaKey: false, ctrlKey: true, shiftKey: false, altKey: replace,
       };
       if(isMac()) {
         key.metaKey = true;
@@ -425,38 +249,46 @@ export default function Query() {
         key.shiftKey = false;
         key.altKey = replace;
       }
-      editor.current?.triggerOnKeyDown(
-        new KeyboardEvent('keydown', key)
-      );
+      editor.current?.fireDOMEvent(new KeyboardEvent('keydown', key));
     });
     eventBus.registerListener(QUERY_TOOL_EVENTS.EDITOR_SET_SQL, (value, focus=true)=>{
       focus && editor.current?.focus();
-      if(!queryToolCtx.params.is_query_tool){
-        lastSavedText.current = value;
-      }
-      editor.current?.setValue(value);
-      if (value == '' && editor.current) {
-        editor.current.state.autoCompleteList = [];
-      }
+      editor.current?.setValue(value, !queryToolCtx.params.is_query_tool);
     });
     eventBus.registerListener(QUERY_TOOL_EVENTS.TRIGGER_QUERY_CHANGE, ()=>{
       change();
     });
     eventBus.registerListener(QUERY_TOOL_EVENTS.TRIGGER_FORMAT_SQL, ()=>{
       let selection = true, sql = editor.current?.getSelection();
+      let sqlEditorPref = preferencesStore.getPreferencesForModule('sqleditor');
+      /* New library does not support capitalize casing
+        so if a user has set capitalize casing we will
+        use preserve casing which is default for the library.
+      */
+      let formatPrefs = {
+        language: 'postgresql',
+        keywordCase: sqlEditorPref.keyword_case === 'capitalize' ? 'preserve' : sqlEditorPref.keyword_case,
+        identifierCase: sqlEditorPref.identifier_case === 'capitalize' ? 'preserve' : sqlEditorPref.identifier_case,
+        dataTypeCase: sqlEditorPref.data_type_case,
+        functionCase: sqlEditorPref.function_case,
+        logicalOperatorNewline: sqlEditorPref.logical_operator_new_line,
+        expressionWidth: sqlEditorPref.expression_width,
+        linesBetweenQueries: sqlEditorPref.lines_between_queries,
+        tabWidth: sqlEditorPref.tab_size,
+        useTabs: !sqlEditorPref.use_spaces,
+        denseOperators: !sqlEditorPref.spaces_around_operators,
+        newlineBeforeSemicolon: sqlEditorPref.new_line_before_semicolon
+      };
       if(sql == '') {
         sql = editor.current.getValue();
         selection = false;
       }
-      queryToolCtx.api.post(url_for('sql.format'), {
-        'sql': sql,
-      }).then((res)=>{
-        if(selection) {
-          editor.current.replaceSelection(res.data.data.sql, 'around');
-        } else {
-          editor.current.setValue(res.data.data.sql);
-        }
-      }).catch(()=>{/* failure should be ignored */});
+      let formattedSql = format(sql,formatPrefs);
+      if(selection) {
+        editor.current.replaceSelection(formattedSql, 'around');
+      } else {
+        editor.current.setValue(formattedSql);
+      }
     });
     eventBus.registerListener(QUERY_TOOL_EVENTS.EDITOR_TOGGLE_CASE, ()=>{
       let selectedText = editor.current?.getSelection();
@@ -483,7 +315,7 @@ export default function Query() {
 
   useEffect(()=>{
     const warnSaveTextClose = ()=>{
-      if(!isDirty() || !queryToolCtx.preferences?.sqleditor.prompt_save_query_changes) {
+      if(!editor.current.isDirty() || !queryToolCtx.preferences?.sqleditor.prompt_save_query_changes) {
         eventBus.fireEvent(QUERY_TOOL_EVENTS.WARN_TXN_CLOSE);
         return;
       }
@@ -505,27 +337,61 @@ export default function Query() {
         />
       ));
     };
-    return eventBus.registerListener(QUERY_TOOL_EVENTS.WARN_SAVE_TEXT_CLOSE, warnSaveTextClose);
+
+    const formatSQL = ()=>{
+      let selection = true, sql = editor.current?.getSelection();
+      /* New library does not support capitalize casing
+        so if a user has set capitalize casing we will 
+        use preserve casing which is default for the library.
+      */
+      let formatPrefs = {
+        language: 'postgresql',
+        keywordCase: queryToolPref.keyword_case === 'capitalize' ? 'preserve' : queryToolPref.keyword_case,
+        identifierCase: queryToolPref.identifier_case === 'capitalize' ? 'preserve' : queryToolPref.identifier_case,
+        dataTypeCase: queryToolPref.data_type_case,
+        functionCase: queryToolPref.function_case,
+        logicalOperatorNewline: queryToolPref.logical_operator_new_line,
+        expressionWidth: queryToolPref.expression_width,
+        linesBetweenQueries: queryToolPref.lines_between_queries,
+        tabWidth: queryToolPref.tab_size,
+        useTabs: !queryToolPref.use_spaces,
+        denseOperators: !queryToolPref.spaces_around_operators,
+        newlineBeforeSemicolon: queryToolPref.new_line_before_semicolon
+      };
+      if(sql == '') {
+        sql = editor.current.getValue();
+        selection = false;
+      }
+      let formattedSql = format(sql,formatPrefs);
+      if(selection) {
+        editor.current.replaceSelection(formattedSql, 'around');
+      } else {
+        editor.current.setValue(formattedSql);
+      }
+    };
+
+    const unregisterFormatSQL = eventBus.registerListener(QUERY_TOOL_EVENTS.TRIGGER_FORMAT_SQL, formatSQL);
+    const unregisterWarn = eventBus.registerListener(QUERY_TOOL_EVENTS.WARN_SAVE_TEXT_CLOSE, warnSaveTextClose);
+
+    return ()=>{
+      unregisterFormatSQL();
+      unregisterWarn();
+    };
   }, [queryToolCtx.preferences]);
 
   useEffect(()=>{
-    registerAutocomplete(queryToolCtx.api, queryToolCtx.params.trans_id, queryToolCtx.preferences.sqleditor,
-      (err)=>{eventBus.fireEvent(QUERY_TOOL_EVENTS.HANDLE_API_ERROR, err);}
-    );
+    registerAutocomplete(editor.current, queryToolCtx.api, queryToolCtx.params.trans_id);
   }, [queryToolCtx.params.trans_id]);
 
-  const isDirty = ()=>(lastSavedText.current !== editor.current.getValue());
-
-  const cursorActivity = useCallback(_.debounce((cmObj)=>{
-    const c = cmObj.getCursor();
-    lastCursorPos.current = c;
-    eventBus.fireEvent(QUERY_TOOL_EVENTS.CURSOR_ACTIVITY, [c.line+1, c.ch+1]);
+  const cursorActivity = useCallback(_.debounce((cursor)=>{
+    lastCursorPos.current = cursor;
+    eventBus.fireEvent(QUERY_TOOL_EVENTS.CURSOR_ACTIVITY, [lastCursorPos.current.line, lastCursorPos.current.ch+1]);
   }, 100), []);
 
   const change = useCallback(()=>{
-    eventBus.fireEvent(QUERY_TOOL_EVENTS.QUERY_CHANGED, isDirty());
+    eventBus.fireEvent(QUERY_TOOL_EVENTS.QUERY_CHANGED, editor.current.isDirty());
 
-    if(!queryToolCtx.params.is_query_tool && isDirty()){
+    if(!queryToolCtx.params.is_query_tool && editor.current.isDirty()){
       if(queryToolCtx.preferences.sqleditor.view_edit_promotion_warning){
         checkViewEditDataPromotion();
       } else {
@@ -535,8 +401,8 @@ export default function Query() {
   }, []);
 
   const closePromotionWarning = (closeModal)=>{
-    if(isDirty()) {
-      editor.current.undo();
+    if(editor.current.isDirty()) {
+      editor.current.execCommand('undo');
       closeModal?.();
     }
   };
@@ -550,7 +416,7 @@ export default function Query() {
           promoteToQueryTool();
           let cursor = editor.current.getCursor();
           editor.current.setValue(editor.current.getValue());
-          editor.current.setCursor(cursor);
+          editor.current.setCursor(cursor.line, cursor.ch);
           editor.current.focus();
           let title = getTitle(pgAdmin, queryToolCtx.preferences.browser, null,null,queryToolCtx.params.server_name, queryToolCtx.params.dbname, queryToolCtx.params.user);
           queryToolCtx.updateTitle(title);
@@ -576,17 +442,43 @@ export default function Query() {
     }
   };
 
+  const shortcutOverrideKeys = useMemo(
+    ()=>{
+      // omit CM internal shortcuts
+      const queryToolPref = _.omit(queryToolCtx.preferences.sqleditor, ['indent', 'unindent', 'comment']);
+      return Object.values(queryToolPref)
+        .filter((p)=>isShortcutValue(p))
+        .map((p)=>({
+          key: toCodeMirrorKey(p), run: (_v, e)=>{
+            queryToolCtx.mainContainerRef?.current?.dispatchEvent(new KeyboardEvent('keydown', {
+              which: e.which,
+              keyCode: e.keyCode,
+              altKey: e.altKey,
+              shiftKey: e.shiftKey,
+              ctrlKey: e.ctrlKey,
+              metaKey: e.metaKey,
+            }));
+            if(toCodeMirrorKey(p) == 'Mod-k') {
+              eventBus.fireEvent(QUERY_TOOL_EVENTS.TRIGGER_FORMAT_SQL);
+            }
+            return true;
+          },
+          preventDefault: true,
+          stopPropagation: true,
+        }));
+    },
+    [queryToolCtx.preferences]
+  );
+
   return <CodeMirror
     currEditor={(obj)=>{
       editor.current=obj;
     }}
     value={''}
     className={classes.sql}
-    events={{
-      'focus': cursorActivity,
-      'cursorActivity': cursorActivity,
-      'change': change,
-    }}
+    onCursorActivity={cursorActivity}
+    onChange={change}
     autocomplete={true}
+    customKeyMap={shortcutOverrideKeys}
   />;
 }

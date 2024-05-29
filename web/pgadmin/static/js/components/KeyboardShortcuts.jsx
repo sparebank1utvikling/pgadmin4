@@ -8,7 +8,8 @@
 //////////////////////////////////////////////////////////////
 
 import _ from 'lodash';
-import { makeStyles, Grid, Typography, Box } from '@material-ui/core';
+import { Grid, Typography, Box } from '@mui/material';
+import { makeStyles } from '@mui/styles';
 import React from 'react';
 import { InputCheckbox, InputText } from './FormComponents';
 import PropTypes from 'prop-types';
@@ -27,7 +28,7 @@ const useStyles = makeStyles((theme) => ({
   }
 }));
 
-export default function KeyboardShortcuts({ value, onChange, fields, title }) {
+export default function KeyboardShortcuts({ value, onChange, fields }) {
   const classes = useStyles();
   const keyCid = _.uniqueId('c');
   const keyhelpid = `h${keyCid}`;
@@ -91,7 +92,7 @@ export default function KeyboardShortcuts({ value, onChange, fields, title }) {
                 {
                   onKeyDown: onKeyDown,
                 }
-              } title={title} />
+              }/>
             </Grid>
           </Grid>;
         } else if (element.name == 'shift') {
@@ -128,7 +129,5 @@ export default function KeyboardShortcuts({ value, onChange, fields, title }) {
 KeyboardShortcuts.propTypes = {
   value: PropTypes.object,
   onChange: PropTypes.func,
-  controlProps: PropTypes.object,
-  fields: PropTypes.array,
-  title: PropTypes.string
+  fields: PropTypes.array
 };

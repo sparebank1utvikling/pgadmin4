@@ -38,7 +38,6 @@
 
 define('pgadmin.browser.utils',
   ['sources/pgadmin'], function(pgAdmin) {
-
   let pgBrowser = pgAdmin.Browser = pgAdmin.Browser || {};
 
   pgBrowser['MainMenus'] = [];
@@ -62,6 +61,8 @@ define('pgadmin.browser.utils',
   /* GET Binary Path Browse config */
   pgAdmin['enable_binary_path_browsing'] = '{{ current_app.config.get('ENABLE_BINARY_PATH_BROWSING') }}' == 'True';
 
+  pgAdmin['fixed_binary_paths'] = {{ current_app.config.get('FIXED_BINARY_PATHS') }};
+
   /* GET the pgadmin server's locale */
   pgAdmin['pgadmin_server_locale'] =  '{{pgadmin_server_locale}}';
 
@@ -71,16 +72,21 @@ define('pgadmin.browser.utils',
   /* Minimum password length */
   pgAdmin['password_length_min'] = '{{password_length_min}}';
 
+  /* Enable server password exec command */
+  pgAdmin['enable_server_passexec_cmd'] = '{{enable_server_passexec_cmd}}';
+
   // Define list of nodes on which Query tool option doesn't appears
   let unsupported_nodes = pgAdmin.unsupported_nodes = [
      'server_group', 'server', 'coll-tablespace', 'tablespace',
      'coll-role', 'role', 'coll-resource_group', 'resource_group',
      'coll-database', 'coll-pga_job', 'coll-pga_schedule', 'coll-pga_jobstep',
-     'pga_job', 'pga_schedule', 'pga_jobstep'
+     'pga_job', 'pga_schedule', 'pga_jobstep',
+     'coll-replica_nodes', 'replica_nodes'
   ];
 
   pgBrowser.utils = {
-    layout: '{{ layout }}',
+    layout: {{ layout|tojson }},
+    theme: '{{ theme }}',
     pg_help_path: '{{ pg_help_path }}',
     tabSize: '{{ editor_tab_size }}',
     wrapCode: '{{ editor_wrap_code }}' == 'True',

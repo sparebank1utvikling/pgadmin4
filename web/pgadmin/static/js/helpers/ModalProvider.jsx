@@ -7,18 +7,19 @@
 //
 //////////////////////////////////////////////////////////////
 
-import { Box, Dialog, DialogContent, DialogTitle, makeStyles, Paper } from '@material-ui/core';
+import { Box, Dialog, DialogContent, DialogTitle, Paper } from '@mui/material';
+import { makeStyles } from '@mui/styles';
 import React, { useState, useMemo } from 'react';
 import clsx from 'clsx';
 import { getEpoch } from 'sources/utils';
 import { DefaultButton, PgIconButton, PrimaryButton } from '../components/Buttons';
 import Draggable from 'react-draggable';
-import CloseIcon from '@material-ui/icons/CloseRounded';
+import CloseIcon from '@mui/icons-material/CloseRounded';
 import CustomPropTypes from '../custom_prop_types';
 import PropTypes from 'prop-types';
 import gettext from 'sources/gettext';
 import HTMLReactParser from 'html-react-parser';
-import CheckRoundedIcon from '@material-ui/icons/CheckRounded';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import { Rnd } from 'react-rnd';
 import { ExpandDialogIcon, MinimizeDialogIcon } from '../components/ExternalIcon';
 
@@ -68,7 +69,7 @@ function alert(title, text, onOkClick, okLabel = gettext('OK')) {
   // bind the modal provider before calling
   this.showModal(title, (closeModal) => {
     const onOkClickClose = () => {
-      onOkClick && onOkClick();
+      onOkClick?.();
       closeModal();
     };
     return (
@@ -81,11 +82,11 @@ function confirm(title, text, onOkClick, onCancelClick, okLabel = gettext('Yes')
   // bind the modal provider before calling
   this.showModal(title, (closeModal) => {
     const onCancelClickClose = () => {
-      onCancelClick && onCancelClick();
+      onCancelClick?.();
       closeModal();
     };
     const onOkClickClose = () => {
-      onOkClick && onOkClick();
+      onOkClick?.();
       closeModal();
     };
     return (
@@ -157,7 +158,7 @@ const dialogStyle = makeStyles((theme) => ({
 
 
 function checkIsResizable(props) {
-  return props.isresizeable == 'true' ? true : false;
+  return props.isresizeable == 'true';
 }
 
 function setEnableResizing(props, resizeable) {
@@ -275,35 +276,34 @@ function ModalContainer({ id, title, content, dialogHeight, dialogWidth, onClose
       onClose?.();
     }
   };
-  const [isfullScreen, setIsFullScreen] = useState(fullScreen);
+  const [isFullScreen, setIsFullScreen] = useState(fullScreen);
 
   return (
     <Dialog
       open={true}
       onClose={closeModal}
       PaperComponent={PaperComponent}
-      PaperProps={{ 'isfullscreen': isfullScreen.toString(), 'isresizeable': isResizeable.toString(), width: dialogWidth, height: dialogHeight, minHeight: minHeight, minWidth: minWidth }}
-      fullScreen={isfullScreen}
+      PaperProps={{ 'isfullscreen': isFullScreen.toString(), 'isresizeable': isResizeable.toString(), width: dialogWidth, height: dialogHeight, minHeight: minHeight, minWidth: minWidth }}
+      fullScreen={isFullScreen}
       fullWidth={isFullWidth}
       disablePortal
     >
-      { showTitle && <>
+      { showTitle &&
         <DialogTitle className='modal-drag-area'>
           <Box className={classes.titleBar}>
             <Box className={classes.title} marginRight="0.25rem" >{title}</Box>
             {
-              showFullScreen && !isfullScreen &&
-                <Box className={classes.iconButtonStyle}><PgIconButton title={gettext('Maximize')} icon={<ExpandDialogIcon className={classes.icon} />} size="xs" noBorder onClick={() => { setIsFullScreen(!isfullScreen); }} /></Box>
+              showFullScreen && !isFullScreen &&
+                <Box className={classes.iconButtonStyle}><PgIconButton title={gettext('Maximize')} icon={<ExpandDialogIcon className={classes.icon} />} size="xs" noBorder onClick={() => { setIsFullScreen(!isFullScreen); }} /></Box>
             }
             {
-              showFullScreen && isfullScreen &&
-                <Box className={classes.iconButtonStyle}><PgIconButton title={gettext('Minimize')} icon={<MinimizeDialogIcon  className={classes.icon} />} size="xs" noBorder onClick={() => { setIsFullScreen(!isfullScreen); }} /></Box>
+              showFullScreen && isFullScreen &&
+                <Box className={classes.iconButtonStyle}><PgIconButton title={gettext('Minimize')} icon={<MinimizeDialogIcon  className={classes.icon} />} size="xs" noBorder onClick={() => { setIsFullScreen(!isFullScreen); }} /></Box>
             }
 
             <Box marginLeft="auto"><PgIconButton title={gettext('Close')} icon={<CloseIcon  />} size="xs" noBorder onClick={closeModal} /></Box>
           </Box>
         </DialogTitle>
-      </>
       }
       <DialogContent height="100%">
         {useMemo(()=>{ return content(closeModal); }, [])}
@@ -316,7 +316,6 @@ ModalContainer.propTypes = {
   title: CustomPropTypes.children,
   content: PropTypes.func,
   fullScreen: PropTypes.bool,
-  maxWidth: PropTypes.string,
   isFullWidth: PropTypes.bool,
   showFullScreen: PropTypes.bool,
   isResizeable: PropTypes.bool,

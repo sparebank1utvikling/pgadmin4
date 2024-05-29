@@ -1,5 +1,14 @@
+/////////////////////////////////////////////////////////////
+//
+// pgAdmin 4 - PostgreSQL Tools
+//
+// Copyright (C) 2013 - 2024, The pgAdmin Development Team
+// This software is released under the PostgreSQL Licence
+//
+//////////////////////////////////////////////////////////////
 import {useRef, useEffect, useState, useCallback, useLayoutEffect} from 'react';
 import moment from 'moment';
+import { isMac } from './keyboard_shortcuts';
 
 /* React hook for setInterval */
 export function useInterval(callback, delay) {
@@ -52,10 +61,10 @@ export function useDelayDebounce(callback, args, delay) {
 }
 
 export function useOnScreen(ref) {
-  const [isIntersecting, setIntersecting] = useState(false);
+  const [intersecting, setIntersecting] = useState(false);
   const observer = new IntersectionObserver(
     ([entry]) => {
-      setIntersecting(entry.isIntersecting);
+      setIntersecting(entry.intersecting);
     }
   );
   useEffect(() => {
@@ -66,7 +75,7 @@ export function useOnScreen(ref) {
     return () => { observer.disconnect(); };
   }, []);
 
-  return isIntersecting;
+  return intersecting;
 }
 
 export function useIsMounted() {
@@ -150,9 +159,11 @@ export function useKeyboardShortcuts(shortcuts, eleRef) {
   const matchFound = (shortcut, e)=>{
     if(!shortcut) return false;
     let keyCode = e.which || e.keyCode;
+    const ctrlKey = (isMac() && shortcut.ctrl_is_meta) ? e.metaKey : e.ctrlKey;
+
     return Boolean(shortcut.alt) == e.altKey &&
       Boolean(shortcut.shift) == e.shiftKey &&
-      Boolean(shortcut.control) == e.ctrlKey &&
+      Boolean(shortcut.control) == ctrlKey &&
       shortcut.key.key_code == keyCode;
   };
   useEffect(()=>{

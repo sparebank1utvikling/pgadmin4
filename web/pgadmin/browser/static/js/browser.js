@@ -17,17 +17,14 @@ import usePreferences, { setupPreferenceBroadcast } from '../../../preferences/s
 import checkNodeVisibility from '../../../static/js/check_node_visibility';
 
 define('pgadmin.browser', [
-  'sources/gettext', 'sources/url_for', 'sources/pgadmin', 'bundled_codemirror',
+  'sources/gettext', 'sources/url_for', 'sources/pgadmin',
   'sources/csrf', 'pgadmin.authenticate.kerberos',
   'pgadmin.browser.utils', 'pgadmin.browser.messages',
   'pgadmin.browser.node', 'pgadmin.browser.collection', 'pgadmin.browser.activity',
-  'sources/codemirror/addon/fold/pgadmin-sqlfoldcode',
   'pgadmin.browser.keyboard', 'sources/tree/pgadmin_tree_save_state',
 ], function(
-  gettext, url_for, pgAdmin, codemirror, csrfToken, Kerberos,
+  gettext, url_for, pgAdmin, csrfToken, Kerberos,
 ) {
-  let CodeMirror = codemirror.default;
-
   let pgBrowser = pgAdmin.Browser = pgAdmin.Browser || {};
   let select_object_msg = gettext('Please select an object in the tree view.');
 
@@ -59,21 +56,18 @@ define('pgadmin.browser', [
       // calc method logic
       calc: (passed_width) => {
         let iw = window.innerWidth;
-        if(iw > passed_width){
+        if(iw > passed_width)
           return passed_width;
-        }else{
-          if (iw > pgAdmin.Browser.stdW.lg)
-            return pgAdmin.Browser.stdW.lg;
-          else if (iw > pgAdmin.Browser.stdW.md)
-            return pgAdmin.Browser.stdW.md;
-          else if (iw > pgAdmin.Browser.stdW.sm)
-            return pgAdmin.Browser.stdW.sm;
-          else
-            // if avilable screen resolution is still
-            // less then return the width value as it
-            return iw;
-        }
-
+        else if (iw > pgAdmin.Browser.stdW.lg)
+          return pgAdmin.Browser.stdW.lg;
+        else if (iw > pgAdmin.Browser.stdW.md)
+          return pgAdmin.Browser.stdW.md;
+        else if (iw > pgAdmin.Browser.stdW.sm)
+          return pgAdmin.Browser.stdW.sm;
+        else
+          // if avilable screen resolution is still
+          // less then return the width value as it
+          return iw;
       },
     },
     stdH: {
@@ -86,18 +80,16 @@ define('pgadmin.browser', [
       calc: (passed_height) => {
         // We are excluding sm as it is too small for dialog
         let ih = window.innerHeight;
-        if (ih > passed_height){
+        if (ih > passed_height)
           return passed_height;
-        } else {
-          if (ih > pgAdmin.Browser.stdH.lg)
-            return pgAdmin.Browser.stdH.lg;
-          else if (ih > pgAdmin.Browser.stdH.md)
-            return pgAdmin.Browser.stdH.md;
-          else
-            // if avilable screen resolution is still
-            // less then return the height value as it
-            return ih;
-        }
+        else if (ih > pgAdmin.Browser.stdH.lg)
+          return pgAdmin.Browser.stdH.lg;
+        else if (ih > pgAdmin.Browser.stdH.md)
+          return pgAdmin.Browser.stdH.md;
+        else
+          // if avilable screen resolution is still
+          // less then return the height value as it
+          return ih;
       },
     },
     // Default panels
@@ -506,7 +498,7 @@ define('pgadmin.browser', [
                 url: _m.url || '#',
                 target: _m.target,
                 icon: _m.icon,
-                enable: enable ? enable : true,
+                enable: enable || true,
                 node: _m.node,
                 checked: _m.checked,
                 below: _m.below,
@@ -557,7 +549,7 @@ define('pgadmin.browser', [
               n = _o.b.Nodes[d._type];
               // Are we looking at the collection node for the given node?
               if (
-                n && n.collection_node && d.nodes &&
+                n?.collection_node && d.nodes &&
                   _.indexOf(d.nodes, _d._type) != -1
               ) {
                 _o.i = i;
@@ -583,7 +575,7 @@ define('pgadmin.browser', [
             onLoad();
           },
           () => {
-            let fail = _o && _o.o && _o.o.fail;
+            let fail = _o?.o?.fail;
             if (fail && typeof(fail) == 'function') {
               fail.apply(_o.t, []);
             }
@@ -654,9 +646,7 @@ define('pgadmin.browser', [
             selectNode = function() {
               this.t.openPath(this.i);
               this.t.select(this.i);
-              if (
-                _ctx.o && _ctx.o.success && typeof(_ctx.o.success) == 'function'
-              ) {
+              if (typeof(_ctx?.o?.success) == 'function') {
                 _ctx.o.success.apply(_ctx.t, [_ctx.i, _data]);
               }
             }.bind(_ctx),
@@ -671,10 +661,8 @@ define('pgadmin.browser', [
                     if (d._type === 'column') {
                       if (pgAdmin.numeric_comparator(d._id, _data._id) == 1)
                         return true;
-                    } else {
-                      if (pgAdmin.natural_sort(d._label, _data._label) == 1)
-                        return true;
-                    }
+                    } else if (pgAdmin.natural_sort(d._label, _data._label) == 1)
+                      return true;
                     s++;
                   }
                   //when the current element is greater than the end element
@@ -698,10 +686,8 @@ define('pgadmin.browser', [
                     if (d._type === 'column') {
                       if (pgAdmin.numeric_comparator(d._id, _data._id) != -1)
                         return true;
-                    } else {
-                      if (pgAdmin.natural_sort(d._label, _data._label) != -1)
-                        return true;
-                    }
+                    } else if (pgAdmin.natural_sort(d._label, _data._label) != -1)
+                      return true;
                     i = items[e];
                     d = __ctx.t.itemData(i);
                     let result;
@@ -744,18 +730,14 @@ define('pgadmin.browser', [
 
               if (binarySearch()) {
                 __ctx.t.before(i, _data).then((_item) => {
-                  if (
-                    __ctx.o && __ctx.o.success && typeof(__ctx.o.success) == 'function'
-                  ) {
+                  if (typeof(__ctx?.o?.success) == 'function') {
                     __ctx.o.success.apply(__ctx.t, [i, _data]);
                   } else {
                     __ctx.t.select(_item);
                   }
                 }, () => {
                   console.warn('Failed to add before...', arguments);
-                  if (
-                    __ctx.o && __ctx.o.fail && typeof(__ctx.o.fail) == 'function'
-                  ) {
+                  if (typeof(__ctx.o?.fail) == 'function') {
                     __ctx.o.fail.apply(__ctx.t, [i, _data]);
                   }
                 });
@@ -776,30 +758,22 @@ define('pgadmin.browser', [
                       ) {
                         ___ctx.t.open(___ctx.i);
                         ___ctx.t.select(_i);
-                      } else {
-                        if (_parent_data) {
-                          // Unload the parent node so that we'll get
-                          // latest data when we try to expand it
-                          ___ctx.t.unload(___ctx.i).then(
-                            () => {
-                              ___ctx.t.open(___ctx.i);
-                            }
-                          );
-                        }
+                      } else if (_parent_data) {
+                        // Unload the parent node so that we'll get
+                        // latest data when we try to expand it
+                        ___ctx.t.unload(___ctx.i).then(
+                          () => {
+                            ___ctx.t.open(___ctx.i);
+                          }
+                        );
                       }
-                      if (
-                        ___ctx.o && ___ctx.o.success &&
-                          typeof(___ctx.o.success) == 'function'
-                      ) {
+                      if (typeof(___ctx?.o?.success) == 'function') {
                         ___ctx.o.success.apply(___ctx.t, [_i, _data]);
                       }
                     },
                     () => {
                       console.warn('Failed to append...', arguments);
-                      if (
-                        ___ctx.o && ___ctx.o.fail &&
-                          typeof(___ctx.o.fail) == 'function'
-                      ) {
+                      if (typeof(___ctx?.o?.fail) == 'function') {
                         ___ctx.o.fail.apply(___ctx.t, [___ctx.i, _data]);
                       }
                     }
@@ -827,9 +801,7 @@ define('pgadmin.browser', [
                 selectNode,
                 function() {
                   let o = this && this.o;
-                  if (
-                    o && o.fail && typeof(o.fail) == 'function'
-                  ) {
+                  if (typeof(o?.fail) == 'function') {
                     o.fail.apply(this.t, [this.i, _data]);
                   }
                 }.bind(this)
@@ -837,9 +809,7 @@ define('pgadmin.browser', [
             },
             () => {
               let o = this && this.o;
-              if (
-                o && o.fail && typeof(o.fail) == 'function'
-              ) {
+              if (typeof(o?.fail) == 'function') {
                 o.fail.apply(this.t, [this.i, _data]);
               }
             });
@@ -881,7 +851,7 @@ define('pgadmin.browser', [
           op: null,
         },
         errorOut = function() {
-          let fail = this.o && this.o.fail;
+          let fail = this.o?.fail;
           if (fail && typeof(fail) == 'function') {
             fail.apply(this.t, [this.i, _new, _old]);
           }
@@ -981,7 +951,7 @@ define('pgadmin.browser', [
                           onLoad();
                         },
                         () => {
-                          let fail = self && self.o && self.o.fail;
+                          let fail = self?.o?.fail;
                           if (
                             fail && typeof(fail) == 'function'
                           ) {
@@ -1110,7 +1080,7 @@ define('pgadmin.browser', [
               self.t.select(self.i);
             }
           }
-          let success = this.o && this.o.success;
+          let success = this.o?.success;
           if (success && typeof(success) == 'function') {
             success.apply(this.t, [this.i, _old, _new]);
           }
@@ -1173,10 +1143,8 @@ define('pgadmin.browser', [
                     if (d._type === 'column') {
                       if (pgAdmin.numeric_comparator(d._id, _new._id) == 1)
                         return true;
-                    } else {
-                      if (pgAdmin.natural_sort(d._label, _new._label) == 1)
-                        return true;
-                    }
+                    } else if (pgAdmin.natural_sort(d._label, _new._label) == 1)
+                      return true;
                     s++;
                   }
                   if (e != items.length - 1) {
@@ -1193,10 +1161,8 @@ define('pgadmin.browser', [
                     if (d._type === 'column') {
                       if (pgAdmin.numeric_comparator(d._id, _new._id) != -1)
                         return true;
-                    } else {
-                      if (pgAdmin.natural_sort(d._label, _new._label) != -1)
-                        return true;
-                    }
+                    } else if (pgAdmin.natural_sort(d._label, _new._label) != -1)
+                      return true;
                     i = items[e];
                     d = __ctx.t.itemData(i);
                     let result;
@@ -1241,16 +1207,12 @@ define('pgadmin.browser', [
                 __ctx.t.before(i, _new).then((new_item) => {
                   __ctx.t.openPath(new_item);
                   __ctx.t.select(new_item);
-                  if (
-                    __ctx.o && __ctx.o.success && typeof(__ctx.o.success) == 'function'
-                  ) {
+                  if (typeof(__ctx?.o?.success) == 'function') {
                     __ctx.o.success.apply(__ctx.t, [i, _old, _new]);
                   }
                 }, () => {
                   console.warn('Failed to add before..', arguments);
-                  if (
-                    __ctx.o && __ctx.o.fail && typeof(__ctx.o.fail) == 'function'
-                  ) {
+                  if (typeof(__ctx?.o?.fail) == 'function') {
                     __ctx.o.fail.apply(__ctx.t, [i, _old, _new]);
                   }
                 });
@@ -1260,17 +1222,13 @@ define('pgadmin.browser', [
                     (new_item) => {
                       __ctx.t.openPath(new_item);
                       __ctx.t.select(new_item);
-                      if (
-                        __ctx.o && __ctx.o.success && typeof(__ctx.o.success) == 'function'
-                      ) {
+                      if (typeof(__ctx?.o?.success) == 'function') {
                         __ctx.o.success.apply(__ctx.t, [__ctx.i, _old, _new]);
                       }
                     },
                     () => {
                       console.warn('Failed to append...', arguments);
-                      if (
-                        __ctx.o && __ctx.o.fail && typeof(__ctx.o.fail) == 'function'
-                      ) {
+                      if (typeof(__ctx?.o?.fail) == 'function') {
                         __ctx.o.fail.apply(__ctx.t, [__ctx.i, _old, _new]);
                       }
                     },
@@ -1298,9 +1256,7 @@ define('pgadmin.browser', [
                 selectNode,
                 function() {
                   let o = this && this.o;
-                  if (
-                    o && o.fail && typeof(o.fail) == 'function'
-                  ) {
+                  if (typeof(o?.fail) == 'function') {
                     o.fail.apply(this.t, [this.i, _old, _new]);
                   }
                 }
@@ -1308,9 +1264,7 @@ define('pgadmin.browser', [
             },
             () => {
               let o = this && this.o;
-              if (
-                o && o.fail && typeof(o.fail) == 'function'
-              ) {
+              if (typeof(o?.fail) == 'function') {
                 o.fail.apply(this.t, [this.i, _old, _new]);
               }
             }
@@ -1355,13 +1309,13 @@ define('pgadmin.browser', [
 
     onRefreshTreeNodeReact: function(_i, _opts) {
       this.tree.refresh(_i).then(() =>{
-        if (_opts && _opts.success) _opts.success();
+        if (_opts?.success) _opts.success();
       });
     },
 
     onRefreshTreeNode: function(_i, _opts) {
       let _d = _i && this.tree.itemData(_i),
-        n = _d && _d._type && this.Nodes[_d._type],
+        n = this.Nodes[_d?._type],
         ctx = {
           b: this, // Browser
           d: _d, // current parent
@@ -1445,7 +1399,7 @@ define('pgadmin.browser', [
             }
           }
           ctx.b._refreshNode(ctx, ctx.branch);
-          let success = (ctx.o && ctx.o.success) || ctx.success;
+          let success = (ctx?.o?.success) || ctx.success;
           if (success && typeof(success) == 'function') {
             success();
           }
@@ -1484,7 +1438,7 @@ define('pgadmin.browser', [
         });
       }.bind(this);
 
-      if (n && n.collection_node) {
+      if (n?.collection_node) {
         let p = ctx.i = this.tree.parent(_i),
           unloadNode = function() {
             this.tree.unload(_i, {
@@ -1638,7 +1592,7 @@ define('pgadmin.browser', [
         node,
         children = _node && tree_local.children(_node);
 
-      if (!children || !children.length)
+      if (!children?.length)
         return null;
 
       for(; idx < children.length; idx++) {
@@ -1709,14 +1663,10 @@ define('pgadmin.browser', [
             );
           });
 
-          if (_callback) {
-            _callback();
-          }
+          _callback?.();
         });
       } else {
-        if (_callback) {
-          _callback();
-        }
+        _callback?.();
       }
     },
 
@@ -1747,7 +1697,7 @@ define('pgadmin.browser', [
             load: true,
           };
           ctx.success = function() {
-            this.b._refreshNode.call(this.b, this, this.d);
+            this.b._refreshNode(this, this.d);
           }.bind(ctx);
           findNode(__ctx.i, d, ctx);
         }
@@ -1793,13 +1743,6 @@ define('pgadmin.browser', [
       indent_with_tabs: pgBrowser.utils.is_indent_with_tabs,
     },
   });
-
-  /* Remove paste event mapping from CodeMirror's emacsy KeyMap binding
-     * specific to Mac LineNumber:5797 - lib/Codemirror.js
-     * It is preventing default paste event(Cmd-V) from triggering
-     * in runtime.
-     */
-  delete CodeMirror.keyMap.emacsy['Ctrl-V'];
 
   // Use spaces instead of tab
   if (pgBrowser.utils.useSpaces == 'True') {

@@ -13,7 +13,7 @@ import PgTable from 'sources/components/PgTable';
 import gettext from 'sources/gettext';
 import PropTypes from 'prop-types';
 import getApiInstance from 'sources/api_instance';
-import { makeStyles } from '@material-ui/core/styles';
+import { makeStyles } from '@mui/styles';
 import { getURL } from '../../../static/utils/utils';
 import Loader from 'sources/components/Loader';
 import EmptyPanelMessage from '../../../../static/js/components/EmptyPanelMessage';
@@ -59,7 +59,7 @@ function parseData(data, node) {
     if (element.icon == null || element.icon == '') {
       if (node) {
         element.icon = _.isFunction(node['node_image'])
-          ? node['node_image'].apply(node, [null, null])
+          ? node['node_image'](null, null)
           : node['node_image'] || 'icon-' + element.type;
       } else {
         element.icon = 'icon-' + element.type;
@@ -88,6 +88,9 @@ function Dependencies({ nodeData, nodeItem, node, treeNodeInfo, isActive, isStal
       sortable: true,
       resizable: true,
       disableGlobalFilter: false,
+      Cell: ({row})=>{
+        return pgAdmin.Browser.Nodes?.[row.original.type]?.label??row.original.type;
+      }
     },
     {
       Header: 'Name',
@@ -181,7 +184,6 @@ function Dependencies({ nodeData, nodeItem, node, treeNodeInfo, isActive, isStal
 }
 
 Dependencies.propTypes = {
-  res: PropTypes.array,
   nodeData: PropTypes.object,
   treeNodeInfo: PropTypes.object,
   node: PropTypes.func,

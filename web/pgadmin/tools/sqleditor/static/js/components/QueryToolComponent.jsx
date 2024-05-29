@@ -20,7 +20,7 @@ import getApiInstance, {callFetch, parseApiError} from '../../../../../static/js
 import url_for from 'sources/url_for';
 import { PANELS, QUERY_TOOL_EVENTS, CONNECTION_STATUS, MAX_QUERY_LENGTH } from './QueryToolConstants';
 import { useInterval } from '../../../../../static/js/custom_hooks';
-import { Box } from '@material-ui/core';
+import { Box } from '@mui/material';
 import { getDatabaseLabel, getTitle, setQueryToolDockerTitle } from '../sqleditor_title';
 import gettext from 'sources/gettext';
 import NewConnectionDialog from './dialogs/NewConnectionDialog';
@@ -71,7 +71,7 @@ function setPanelTitle(docker, panelId, title, qtState, dirty=false) {
     docker.setInternalAttrs(panelId, {
       isDirty: dirty,
     });
-    setQueryToolDockerTitle(docker, panelId, true, title, qtState.current_file ? true : false);
+    setQueryToolDockerTitle(docker, panelId, true, title, qtState.current_file);
   }
 }
 
@@ -79,13 +79,85 @@ function onBeforeUnload(e) {
   e.preventDefault();
   e.returnValue = 'prevent';
 }
+
+const FIXED_PREF = {
+  find: {
+    'control': true,
+    ctrl_is_meta: true,
+    'shift': false,
+    'alt': false,
+    'key': {
+      'key_code': 70,
+      'char': 'F',
+    },
+  },
+  replace: {
+    'control': true,
+    ctrl_is_meta: true,
+    'shift': false,
+    'alt': true,
+    'key': {
+      'key_code': 70,
+      'char': 'F',
+    },
+  },
+  gotolinecol: {
+    'control': true,
+    ctrl_is_meta: true,
+    'shift': false,
+    'alt': false,
+    'key': {
+      'key_code': 76,
+      'char': 'L',
+    },
+  },
+  indent: {
+    'control': false,
+    'shift': false,
+    'alt': false,
+    'key': {
+      'key_code': 9,
+      'char': 'Tab',
+    },
+  },
+  unindent: {
+    'control': false,
+    'shift': true,
+    'alt': false,
+    'key': {
+      'key_code': 9,
+      'char': 'Tab',
+    },
+  },
+  comment: {
+    'control': true,
+    ctrl_is_meta: true,
+    'shift': false,
+    'alt': false,
+    'key': {
+      'key_code': 191,
+      'char': '/',
+    },
+  },
+  format_sql: {
+    'control': true,
+    ctrl_is_meta: true,
+    'shift': false,
+    'alt': false,
+    'key': {
+      'key_code': 75,
+      'char': 'k',
+    },
+  },
+};
+
 export default function QueryToolComponent({params, pgWindow, pgAdmin, selectedNodeInfo, qtPanelDocker, qtPanelId, eventBusObj}) {
   const containerRef = React.useRef(null);
   const preferencesStore = usePreferences();
   const [qtState, _setQtState] = useState({
     preferences: {
       browser: preferencesStore.getPreferencesForModule('browser'),
-      sqleditor: preferencesStore.getPreferencesForModule('sqleditor'),
+      sqleditor: {...preferencesStore.getPreferencesForModule('sqleditor'), ...FIXED_PREF},
       graphs: preferencesStore.getPreferencesForModule('graphs'),
       misc: preferencesStore.getPreferencesForModule('misc'),
     },
@@ -100,7 +172,7 @@ export default function QueryToolComponent({params, pgWindow, pgAdmin, selectedN
     params: {
       ...params,
       title: _.unescape(params.title),
-      is_query_tool: params.is_query_tool == 'true' ? true : false,
+      is_query_tool: params.is_query_tool == 'true',
       node_name: retrieveNodeName(selectedNodeInfo),
       dbname: _.unescape(params.database_name) || getDatabaseLabel(selectedNodeInfo)
     },
@@ -115,7 +187,7 @@ export default function QueryToolComponent({params, pgWindow, pgAdmin, selectedN
       bgcolor: params.bgcolor,
       conn_title: getTitle(
         pgAdmin, null, selectedNodeInfo, true, _.unescape(params.server_name), _.unescape(params.database_name) || getDatabaseLabel(selectedNodeInfo),
-        _.unescape(params.role) || _.unescape(params.user), params.is_query_tool == 'true' ? true : false),
+        _.unescape(params.role) || _.unescape(params.user), params.is_query_tool == 'true'),
       server_name: _.unescape(params.server_name),
       database_name: _.unescape(params.database_name) || getDatabaseLabel(selectedNodeInfo),
       is_selected: true,
@@ -176,6 +248,7 @@ export default function QueryToolComponent({params, pgWindow, pgAdmin, selectedN
           mode: 'horizontal',
           children: [
             {
+              maximizable: true,
               tabs: [
                 LayoutDocker.getPanel({id: PANELS.QUERY, title: gettext('Query'), content: <Query />}),
                 LayoutDocker.getPanel({id: PANELS.HISTORY, title: gettext('Query History'), content: <QueryHistory />,
@@ -184,6 +257,7 @@ export default function QueryToolComponent({params, pgWindow, pgAdmin, selectedN
             },
             {
               size: 75,
+              maximizable: true,
               tabs: [
                 LayoutDocker.getPanel({
                   id: PANELS.SCRATCH, title: gettext('Scratch Pad'),
@@ -203,6 +277,7 @@ export default function QueryToolComponent({params, pgWindow, pgAdmin, selectedN
           mode: 'horizontal',
           children: [
             {
+              maximizable: true,
               tabs: [
                 LayoutDocker.getPanel({
                   id: PANELS.DATA_OUTPUT, title: gettext('Data Output'), content: <ResultSet />,
@@ -362,7 +437,7 @@ export default function QueryToolComponent({params, pgWindow, pgAdmin, selectedN
     state => {
       setQtState({preferences: {
         browser: state.getPreferencesForModule('browser'),
-        sqleditor: state.getPreferencesForModule('sqleditor'),
+        sqleditor: {...state.getPreferencesForModule('sqleditor'), ...FIXED_PREF},
         graphs: state.getPreferencesForModule('graphs'),
         misc: state.getPreferencesForModule('misc'),
       }});
@@ -601,7 +676,7 @@ export default function QueryToolComponent({params, pgWindow, pgAdmin, selectedN
                 fgcolor: connectionData.fgcolor,
                 bgcolor: connectionData.bgcolor,
               },
-              connected: respData.data.trans_id ? true : false,
+              connected: respData.data.trans_id,
               obtaining_conn: false,
             };
           });

@@ -10,8 +10,8 @@ import PropTypes from 'prop-types';
 
 import React, { useContext, useState } from 'react';
 
-import { Box, Grid, Typography } from '@material-ui/core';
-import { makeStyles } from '@material-ui/styles';
+import { Box, Grid, Typography } from '@mui/material';
+import { makeStyles } from '@mui/styles';
 
 import { InputSelect } from '../../../../../static/js/components/FormComponents';
 import { SchemaDiffEventsContext } from './SchemaDiffComponent';
@@ -38,8 +38,8 @@ export function InputComponent({ label, serverList, databaseList, schemaList, di
   const [selectedDatabase, setSelectedDatabase] = useState(selectedDid);
   const [selectedSchema, setSelectedSchema] = useState(selectedScid);
   const eventBus = useContext(SchemaDiffEventsContext);
-  const [disableDBSelection, setDisableDBSelection] = useState(selectedSid == null ? true : false);
-  const [disableSchemaSelection, setDisableSchemaSelection] = useState(selectedDid == null ? true : false);
+  const [disableDBSelection, setDisableDBSelection] = useState(selectedSid == null);
+  const [disableSchemaSelection, setDisableSchemaSelection] = useState(selectedDid == null);
   const changeServer = (selectedOption) => {
     setDisableDBSelection(false);
     setSelectedServer(selectedOption);
@@ -98,7 +98,7 @@ export function InputComponent({ label, serverList, databaseList, schemaList, di
         <Grid item lg={3} md={3} sm={3} xs={3} className={classes.inputLabel}>
           <InputSelect
             options={databaseList}
-            optionsReloadBasis={databaseList?.length}
+            optionsReloadBasis={databaseList?.map ? _.join(databaseList.map((c)=>c.value), ',') : null}
             onChange={changeDatabase}
             value={selectedDatabase}
             controlProps={
@@ -114,7 +114,7 @@ export function InputComponent({ label, serverList, databaseList, schemaList, di
         <Grid item lg={3} md={3} sm={3} xs={3} className={classes.inputLabel}>
           <InputSelect
             options={schemaList}
-            optionsReloadBasis={schemaList?.length}
+            optionsReloadBasis={schemaList?.map ? _.join(schemaList.map((c)=>c.value), ',') : null}
             onChange={changeSchema}
             value={selectedSchema}
             controlProps={

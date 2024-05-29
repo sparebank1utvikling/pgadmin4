@@ -140,13 +140,13 @@ define('pgadmin.node.database', [
         return (node && !node.connected && node.allowConn);
       },
       is_connected: function(node) {
-        return (node && node.connected && node.canDisconn);
+        return (node?.connected && node?.canDisconn);
       },
       is_psql_enabled: function(node) {
-        return (node && node.connected) && pgAdmin['enable_psql'];
+        return node?.connected && pgAdmin['enable_psql'];
       },
       is_conn_allow: function(node) {
-        return (node && node.allowConn);
+        return (node?.allowConn);
       },
       connection_lost: function(i, resp, server_connected) {
         if (pgBrowser.tree) {
@@ -154,7 +154,7 @@ define('pgadmin.node.database', [
             d = i && t.itemData(i),
             self = this;
 
-          while (d && d._type != 'database') {
+          while (d?._type != 'database') {
             i = t.parent(i);
             d = i && t.itemData(i);
           }
@@ -216,7 +216,7 @@ define('pgadmin.node.database', [
             i = input.item || t.selected(),
             d = i  ? t.itemData(i) : undefined;
 
-          if (d && d.label != 'template0') {
+          if (d?.label != 'template0') {
             connect_to_database(obj, d, t, i, true);
           }
           return false;
@@ -380,7 +380,7 @@ define('pgadmin.node.database', [
           // If node_info is not present in current object then it might in its
           // parent in case if we used sub node control
           let node_info = args.node_info || args.handler.node_info;
-          return 'catalog' in node_info ? false : true;
+          return !('catalog' in node_info);
         }
         return true;
       },
@@ -421,7 +421,7 @@ define('pgadmin.node.database', [
                 setTimeout(function() {
                   if (msg == 'CRYPTKEY_SET') {
                     connect_to_database(_model, _data, _tree, _item, _wasConnected);
-                  } else {
+                  } else if (msg != 'ALERT_CALLED') {
                     showServerPassword(
                       gettext('Connect to database'),
                       msg, _model, _data, _tree, _item, _status,
@@ -436,7 +436,7 @@ define('pgadmin.node.database', [
             res, model, _data, _tree, _item, _connected
           ) {
             _data.is_connecting = false;
-            if (res && res.data) {
+            if (res?.data) {
               if(typeof res.data.connected == 'boolean') {
                 _data.connected = res.data.connected;
               }
@@ -462,7 +462,7 @@ define('pgadmin.node.database', [
               );
               /* Call enable/disable menu function after database is connected.
                To make sure all the menus for database is in the right state */
-              pgBrowser.enable_disable_menus.apply(pgBrowser, [_item]);
+              pgBrowser.enable_disable_menus(_item);
               pgBrowser.Nodes['database'].callbacks.selected(_item, _data);
 
               if (!_connected) {

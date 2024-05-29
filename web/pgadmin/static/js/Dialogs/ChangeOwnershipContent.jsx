@@ -7,7 +7,7 @@
 //
 //////////////////////////////////////////////////////////////
 
-import { makeStyles } from '@material-ui/core';
+import { makeStyles } from '@mui/styles';
 import React from 'react';
 import PropTypes from 'prop-types';
 import gettext from 'sources/gettext';
@@ -80,7 +80,6 @@ export default function ChangeOwnershipContent({onSave, onClose, deletedUser, us
 ChangeOwnershipContent.propTypes = {
   onSave: PropTypes.func,
   onClose: PropTypes.func,
-  currentUser: PropTypes.string,
   userList: PropTypes.array,
   noOfSharedServers: PropTypes.number,
   deletedUser: PropTypes.string

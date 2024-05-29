@@ -11,11 +11,11 @@ import PropTypes from 'prop-types';
 
 import React, { useEffect, useRef } from 'react';
 
-import DeleteSweepIcon from '@material-ui/icons/DeleteSweep';
-import { Box } from '@material-ui/core';
-import { makeStyles } from '@material-ui/core/styles';
-import BugReportRoundedIcon from '@material-ui/icons/BugReportRounded';
-import CloseSharpIcon from '@material-ui/icons/CloseSharp';
+import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
+import { Box } from '@mui/material';
+import { makeStyles } from '@mui/styles';
+import BugReportRoundedIcon from '@mui/icons-material/BugReportRounded';
+import CloseSharpIcon from '@mui/icons-material/CloseSharp';
 
 import url_for from 'sources/url_for';
 import gettext from 'sources/gettext';
@@ -23,7 +23,7 @@ import pgAdmin from 'sources/pgadmin';
 import Loader from 'sources/components/Loader';
 
 import SchemaView from '../../../../../static/js/SchemaView';
-import getApiInstance from '../../../../../static/js/api_instance';
+import getApiInstance, { parseApiError } from '../../../../../static/js/api_instance';
 import { DefaultButton, PrimaryButton } from '../../../../../static/js/components/Buttons';
 import { getAppropriateLabel, getDebuggerTitle } from '../debugger_utils';
 import { DebuggerArgumentSchema } from './DebuggerArgs.ui';
@@ -267,10 +267,10 @@ export default function DebuggerArgumentComponent({ debuggerInfo, restartDebug, 
       funcObj.push({
         'name': argName[index],
         'type': argType[index],
-        'is_null': argData['is_null'] ? true : false,
-        'expr': argData['is_expression'] ? true : false,
+        'is_null': argData['is_null'],
+        'expr': argData['is_expression'],
         'value': values,
-        'use_default': argData['use_default'] ? true : false,
+        'use_default': argData['use_default'],
         'default_value': defValList[index],
         'disable_use_default': isUnnamedParam ? defValList[index] == DEBUGGER_ARGS.NO_DEFAULT_VALUE : defValList[index] == DEBUGGER_ARGS.NO_DEFAULT,
       });
@@ -326,17 +326,15 @@ export default function DebuggerArgumentComponent({ debuggerInfo, restartDebug, 
           'default_value': defValList[i],
           'disable_use_default': defValList[i] == DEBUGGER_ARGS.NO_DEFAULT_VALUE,
         });
-      } else {
-        if (argMode && (argMode[i] == 'i' || argMode[i] == 'b' ||
+      } else if (argMode && (argMode[i] == 'i' || argMode[i] == 'b' ||
           (isEdbProc && argMode[i] == 'o'))) {
-          myObj.push({
-            'name': myargname[i],
-            'type': argType[i],
-            'use_default': useDefValue,
-            'default_value': defValList[i],
-            'disable_use_default': defValList[i] == DEBUGGER_ARGS.NO_DEFAULT_VALUE,
-          });
-        }
+        myObj.push({
+          'name': myargname[i],
+          'type': argType[i],
+          'use_default': useDefValue,
+          'default_value': defValList[i],
+          'disable_use_default': defValList[i] == DEBUGGER_ARGS.NO_DEFAULT_VALUE,
+        });
       }
     }
     return myObj;
@@ -528,21 +526,19 @@ export default function DebuggerArgumentComponent({ debuggerInfo, restartDebug, 
         'type': arg.type,
         'value': 'NULL',
       });
-    } else {
+    } else if (arg.use_default) {
       // Check if default value to be used or not
-      if (arg.use_default) {
-        argsValueList.push({
-          'name': arg.name,
-          'type': arg.type,
-          'value': arg.default_value,
-        });
-      } else {
-        argsValueList.push({
-          'name': arg.name,
-          'type': arg.type,
-          'value': arg.value,
-        });
-      }
+      argsValueList.push({
+        'name': arg.name,
+        'type': arg.type,
+        'value': arg.default_value,
+      });
+    } else {
+      argsValueList.push({
+        'name': arg.name,
+        'type': arg.type,
+        'value': arg.value,
+      });
     }
   }
   function getFunctionID(d, treeInfo) {
@@ -596,7 +592,7 @@ export default function DebuggerArgumentComponent({ debuggerInfo, restartDebug, 
 
   function checkTypeAndGetUrl(d, treeInfo) {
     let baseUrl;
-    if (d && d._type == 'function') {
+    if (d?._type == 'function') {
       baseUrl = url_for('debugger.initialize_target_for_function', {
         'debug_type': 'direct',
         'trans_id': transId,
@@ -605,7 +601,7 @@ export default function DebuggerArgumentComponent({ debuggerInfo, restartDebug, 
         'scid': treeInfo.schema._id,
         'func_id': treeInfo.function._id,
       });
-    } else if (d && d._type == 'procedure') {
+    } else if (d?._type == 'procedure') {
       baseUrl = url_for('debugger.initialize_target_for_function', {
         'debug_type': 'direct',
         'trans_id': transId,
@@ -614,7 +610,7 @@ export default function DebuggerArgumentComponent({ debuggerInfo, restartDebug, 
         'scid': treeInfo.schema._id,
         'func_id': treeInfo.procedure._id,
       });
-    } else if (d && d._type == 'edbfunc') {
+    } else if (d?._type == 'edbfunc') {
       baseUrl = url_for('debugger.initialize_target_for_function', {
         'debug_type': 'direct',
         'trans_id': transId,
@@ -623,7 +619,7 @@ export default function DebuggerArgumentComponent({ debuggerInfo, restartDebug, 
         'scid': treeInfo.schema._id,
         'func_id': treeInfo.edbfunc._id,
       });
-    } else if (d && d._type == 'edbproc') {
+    } else if (d?._type == 'edbproc') {
       baseUrl = url_for('debugger.initialize_target_for_function', {
         'debug_type': 'direct',
         'trans_id': transId,
@@ -741,7 +737,7 @@ export default function DebuggerArgumentComponent({ debuggerInfo, restartDebug, 
                 setLoaderText('');
                 pgAdmin.Browser.notifier.alert(
                   gettext('Error occured: '),
-                  gettext(error.response.data)
+                  parseApiError(error)
                 );
               });
             /* Close the debugger modal dialog */
@@ -752,7 +748,7 @@ export default function DebuggerArgumentComponent({ debuggerInfo, restartDebug, 
             setLoaderText('');
             pgAdmin.Browser.notifier.alert(
               gettext('Debugger Target Initialization Error'),
-              gettext(error.response.data)
+              parseApiError(error)
             );
           });
 
@@ -773,7 +769,7 @@ export default function DebuggerArgumentComponent({ debuggerInfo, restartDebug, 
             props.closeModal();
             pgAdmin.Browser.notifier.alert(
               gettext('Debugger Listener Startup Error'),
-              gettext(error.response.data)
+              parseApiError(error)
             );
           });
         setLoaderText('');
@@ -797,7 +793,7 @@ export default function DebuggerArgumentComponent({ debuggerInfo, restartDebug, 
             setLoaderText('');
             pgAdmin.Browser.notifier.alert(
               gettext('Debugger Listener Startup Set Arguments Error'),
-              gettext(error.response.data)
+              parseApiError(error)
             );
           });
       }
@@ -887,4 +883,3 @@ DebuggerArgumentComponent.propTypes = {
   pgTreeInfo: PropTypes.object,
   pgData: PropTypes.object,
 };
-

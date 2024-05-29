@@ -8,7 +8,8 @@
 //////////////////////////////////////////////////////////////
 
 import React, { useContext, useEffect, useRef, useState } from 'react';
-import { Box, makeStyles, Tab, Tabs, Tooltip } from '@material-ui/core';
+import { Box, Tab, Tabs, Grid } from '@mui/material';
+import { makeStyles } from '@mui/styles';
 import _ from 'lodash';
 import PropTypes from 'prop-types';
 import clsx from 'clsx';
@@ -324,7 +325,11 @@ export default function FormView({
         let currentControl = <MappedFormControl
           inputRef={(ele)=>{
             if(firstEleRef && firstEleID.current === field.id) {
-              firstEleRef.current = ele;
+              if(typeof firstEleRef == 'function') {
+                firstEleRef(ele);
+              } else {
+                firstEleRef.current = ele;
+              }
             }
           }}
           state={value}
@@ -359,10 +364,6 @@ export default function FormView({
           ]}
         />;
 
-        if(field.tooltip) {
-          currentControl = <Tooltip title={field.tooltip} aria-label={field.tooltip}>{currentControl}</Tooltip>;
-        }
-
         if(field.isFullTab && field.helpMessage) {
           currentControl = (<React.Fragment key={`coll-${field.id}`}>
             <FormNote key={`note-${field.id}`} text={field.helpMessage}/>
@@ -380,9 +381,9 @@ export default function FormView({
             withContainer: false, controlGridBasis: 3
           }));
           tabs[group].push(
-            <Box key={`ic-${inlineComponents[0].key}`} display="flex" className={classes.controlRow} gridRowGap="8px" flexWrap="wrap">
+            <Grid container spacing={0} key={`ic-${inlineComponents[0].key}`} className={classes.controlRow} rowGap="8px">
               {inlineComponents}
-            </Box>
+            </Grid>
           );
           inlineComponents = [];
           inlineCompGroup = null;
@@ -395,9 +396,9 @@ export default function FormView({
 
   if(inlineComponents?.length > 0) {
     tabs[inlineCompGroup].push(
-      <Box key={`ic-${inlineComponents[0].key}`} display="flex" className={classes.controlRow} gridRowGap="8px" flexWrap="wrap">
+      <Grid container spacing={0} key={`ic-${inlineComponents[0].key}`} className={classes.controlRow} rowGap="8px">
         {inlineComponents}
-      </Box>
+      </Grid>
     );
   }
 
@@ -417,7 +418,7 @@ export default function FormView({
   }
 
   useEffect(()=>{
-    onTabChange && onTabChange(tabValue, Object.keys(tabs)[tabValue], sqlTabActive);
+    onTabChange?.(tabValue, Object.keys(tabs)[tabValue], sqlTabActive);
   }, [tabValue]);
 
   /* check whether form is kept hidden by visible prop */
@@ -427,54 +428,50 @@ export default function FormView({
 
   if(isTabView) {
     return (
-      <>
-        <Box height="100%" display="flex" flexDirection="column" className={className} ref={formRef} data-test="form-view">
-          <Box>
-            <Tabs
-              value={tabValue}
-              onChange={(event, selTabValue) => {
-                setTabValue(selTabValue);
-              }}
-              variant="scrollable"
-              scrollButtons="auto"
-              action={(ref)=>ref && ref.updateIndicator()}
-            >
-              {Object.keys(finalTabs).map((tabName)=>{
-                return <Tab key={tabName} label={tabName} data-test={tabName}/>;
-              })}
-            </Tabs>
-          </Box>
-          {Object.keys(finalTabs).map((tabName, i)=>{
-            let contentClassName = [stateUtils.formErr.message ? classes.errorMargin : null];
-            if(fullTabs.indexOf(tabName) == -1) {
-              contentClassName.push(classes.nestedControl);
-            } else {
-              contentClassName.push(classes.fullControl);
-            }
-            return (
-              <TabPanel key={tabName} value={tabValue} index={i} classNameRoot={clsx(tabsClassname[tabName], isNested ? classes.nestedTabPanel : null)}
-                className={clsx(contentClassName)} data-testid={tabName}>
-                {finalTabs[tabName]}
-              </TabPanel>
-            );
-          })}
+      <Box height="100%" display="flex" flexDirection="column" className={className} ref={formRef} data-test="form-view">
+        <Box>
+          <Tabs
+            value={tabValue}
+            onChange={(event, selTabValue) => {
+              setTabValue(selTabValue);
+            }}
+            variant="scrollable"
+            scrollButtons="auto"
+            action={(ref)=>ref?.updateIndicator()}
+          >
+            {Object.keys(finalTabs).map((tabName)=>{
+              return <Tab key={tabName} label={tabName} data-test={tabName}/>;
+            })}
+          </Tabs>
         </Box>
-      </>);
+        {Object.keys(finalTabs).map((tabName, i)=>{
+          let contentClassName = [stateUtils.formErr.message ? classes.errorMargin : null];
+          if(fullTabs.indexOf(tabName) == -1) {
+            contentClassName.push(classes.nestedControl);
+          } else {
+            contentClassName.push(classes.fullControl);
+          }
+          return (
+            <TabPanel key={tabName} value={tabValue} index={i} classNameRoot={clsx(tabsClassname[tabName], isNested ? classes.nestedTabPanel : null)}
+              className={clsx(contentClassName)} data-testid={tabName}>
+              {finalTabs[tabName]}
+            </TabPanel>
+          );
+        })}
+      </Box>);
   } else {
     let contentClassName = [classes.nonTabPanelContent, stateUtils.formErr.message ? classes.errorMargin : null];
     return (
-      <>
-        <Box height="100%" display="flex" flexDirection="column" className={clsx(className)} ref={formRef} data-test="form-view">
-          <TabPanel value={tabValue} index={0} classNameRoot={classes.nonTabPanel}
-            className={clsx(contentClassName)}>
-            {Object.keys(finalTabs).map((tabName)=>{
-              return (
-                <React.Fragment key={tabName}>{finalTabs[tabName]}</React.Fragment>
-              );
-            })}
-          </TabPanel>
-        </Box>
-      </>);
+      <Box height="100%" display="flex" flexDirection="column" className={clsx(className)} ref={formRef} data-test="form-view">
+        <TabPanel value={tabValue} index={0} classNameRoot={classes.nonTabPanel}
+          className={clsx(contentClassName)}>
+          {Object.keys(finalTabs).map((tabName)=>{
+            return (
+              <React.Fragment key={tabName}>{finalTabs[tabName]}</React.Fragment>
+            );
+          })}
+        </TabPanel>
+      </Box>);
   }
 }
 

@@ -9,10 +9,10 @@
 
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import gettext from 'sources/gettext';
-import { Box } from '@material-ui/core';
+import { Box } from '@mui/material';
 import { DefaultButton, PrimaryButton } from '../components/Buttons';
-import CloseIcon from '@material-ui/icons/CloseRounded';
-import CheckRoundedIcon from '@material-ui/icons/CheckRounded';
+import CloseIcon from '@mui/icons-material/CloseRounded';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import PropTypes from 'prop-types';
 import { useModalStyles } from '../helpers/ModalProvider';
 import { FormFooterMessage, InputCheckbox, InputText, MESSAGE_TYPE } from '../components/FormComponents';
@@ -70,7 +70,7 @@ export default function ConnectServerContent({closeModal, data, onOK, setHeight}
             </span>
           </Box>
           <Box marginTop='12px'>
-            <InputText inputRef={firstEleRef} type="password" value={formData['tunnel_password']} controlProps={{maxLength:null}}
+            <InputText inputRef={firstEleRef} type="password" value={formData['tunnel_password']} controlProps={{maxLength:null, autoComplete:'new-password'}}
               onChange={(e)=>onTextChange(e, 'tunnel_password')} onKeyDown={(e)=>onKeyDown(e)} />
           </Box>
           <Box marginTop='12px' marginBottom='12px'>
@@ -93,7 +93,7 @@ export default function ConnectServerContent({closeModal, data, onOK, setHeight}
                 /* Set only if no tunnel password asked */
                 firstEleRef.current = ele;
               }
-            }} type="password" value={formData['password']} controlProps={{maxLength:null}}
+            }} type="password" value={formData['password']} controlProps={{maxLength:null, autoComplete:'new-password'}}
             onChange={(e)=>onTextChange(e, 'password')} onKeyDown={(e)=>onKeyDown(e)}/>
           </Box>
           <Box marginTop='12px'>

@@ -86,21 +86,19 @@ export default class MainMenuFactory {
       // Some callbacks registered in 'callbacks' check and call specifiec callback function
       if (options.module && 'callbacks' in options.module && options.module.callbacks[options.callback]) {
         options.module.callbacks[options.callback].apply(options.module, [options.data, pgAdmin.Browser.tree?.selected()]);
-      } else if (options.module && options.module[options.callback]) {
-        options.module[options.callback].apply(options.module, [options.data, pgAdmin.Browser.tree?.selected()]);
+      } else if (options?.module?.[options.callback]) {
+        options.module[options.callback](options.data, pgAdmin.Browser.tree?.selected());
       } else if (options?.callback) {
         options.callback(options);
-      } else {
-        if (options.url != '#') {
-          let api = getApiInstance();
-          api(
-            url_for('tools.initialize')
-          ).then(()=>{
-            window.open(options.url);
-          }).catch(()=>{
-            pgAdmin.Browser.notifier.error(gettext('Error in opening window'));
-          });
-        }
+      } else if (options.url != '#') {
+        let api = getApiInstance();
+        api(
+          url_for('tools.initialize')
+        ).then(()=>{
+          window.open(options.url);
+        }).catch(()=>{
+          pgAdmin.Browser.notifier.error(gettext('Error in opening window'));
+        });
       }
     }}, (menu, item)=> {
       pgAdmin.Browser.Events.trigger('pgadmin:nw-enable-disable-menu-items', menu, item);
@@ -119,7 +117,7 @@ export default class MainMenuFactory {
     let selectedNode=pgAdmin.Browser.tree.selected();
     let flag=!_.isUndefined(selectedNodeFromNodes.showMenu);
     if(flag){
-      var showMenu = selectedNodeFromNodes.showMenu(d, selectedNode);
+      let showMenu = selectedNodeFromNodes.showMenu(d, selectedNode);
       return {flag:showMenu?false:flag,showMenu};
     } else{
       return {flag,showMenu:undefined};

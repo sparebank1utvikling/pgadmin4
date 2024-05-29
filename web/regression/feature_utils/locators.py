@@ -51,8 +51,9 @@ class NavMenuLocators:
     show_system_objects_pref_label_xpath = \
         "//label[contains(text(), 'Show system objects?')]"
 
-    maximize_pref_dialogue_css = "//div[text()='Preferences']" \
-                                 "//following::div//span[1]"
+    maximize_pref_dialogue_css = "button[data-label='Maximize']"
+
+    maximize_pref_dialogue_css = "button[data-label='Maximize']"
 
     specified_pref_node_exp_status = \
         "//*[@id='treeContainer']//div//span[text()='{0}']"
@@ -235,12 +236,13 @@ class QueryToolLocators:
 
     sql_editor_message = "//div[@id='id-messages'][contains(string(), '{}')]"
 
-    code_mirror_hint_box_xpath = "//ul[@class='CodeMirror-hints default']"
+    code_mirror_hint_box = ".cm-editor .cm-tooltip-autocomplete"
 
     code_mirror_hint_item_xpath = \
-        "//ul[contains(@class, 'CodeMirror-hints') and contains(., '{}')]"
+        ("//div[contains(@class, 'cm-tooltip-autocomplete') "
+         "and contains(., '{}')]")
 
-    code_mirror_data_xpath = "//pre[@class=' CodeMirror-line ']/span"
+    code_mirror_content = "{0} .cm-content"
 
     btn_commit = "button[data-label='Commit']"
 
@@ -277,6 +279,6 @@ class PropertyDialogueLocators:
     # This will contain xpaths for elements in properties dialogue
     server_dialogue_title = "//span[text()='Register - Server']"
 
-    server_connection_tab = "//button/span[text()='Connection']"
+    server_connection_tab = "//button[text()='Connection']"
 
-    server_tab_save = "//button/span[text()='Save']"
+    server_tab_save = "//button[text()='Save']"

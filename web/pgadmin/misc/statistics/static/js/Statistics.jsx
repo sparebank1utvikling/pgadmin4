@@ -13,7 +13,7 @@ import PgTable from 'sources/components/PgTable';
 import gettext from 'sources/gettext';
 import PropTypes from 'prop-types';
 import getApiInstance from 'sources/api_instance';
-import { makeStyles } from '@material-ui/core/styles';
+import { makeStyles } from '@mui/styles';
 import { getURL } from '../../../static/utils/utils';
 import Loader from 'sources/components/Loader';
 import EmptyPanelMessage from '../../../../static/js/components/EmptyPanelMessage';
@@ -89,8 +89,11 @@ function getColumn(data, singleLineStatistics, prettifyFields=[]) {
   columns.forEach((c)=>{
     // Prettify the cell view
     if(prettifyFields.includes(c.Header)) {
-      // eslint-disable-next-line react/display-name,react/prop-types
       c.Cell = ({value})=><>{toPrettySize(value)}</>;
+      c.Cell.displayName = 'Cell';
+      c.Cell.propTypes = {
+        value: PropTypes.any,
+      };
     }
   });
   return columns;
@@ -123,7 +126,7 @@ function createSingleLineStatistics(data, prettifyFields) {
 
   for (let idx in columns) {
     name = columns[idx]['name'];
-    if (row && row[name]) {
+    if (row?.[name]) {
       value =
         _.indexOf(prettifyFields, name) != -1
           ? toPrettySize(row[name])
@@ -249,7 +252,6 @@ function Statistics({ nodeData, nodeItem, node, treeNodeInfo, isActive, isStale,
 }
 
 Statistics.propTypes = {
-  res: PropTypes.array,
   nodeData: PropTypes.object,
   nodeItem: PropTypes.object,
   treeNodeInfo: PropTypes.object,

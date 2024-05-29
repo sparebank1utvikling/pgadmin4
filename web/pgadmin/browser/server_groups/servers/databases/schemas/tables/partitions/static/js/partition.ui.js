@@ -33,7 +33,7 @@ export function getNodePartitionTableSchema(treeNodeInfo, itemNodeData, pgBrowse
         cacheLevel: 'database'
       }, (d)=>{
         // If schema name start with pg_* then we need to exclude them
-        return !(d && d.label.match(/^pg_/));
+        return !(d?.label.match(/^pg_/));
       }),
       spcname: spcname,
       coll_inherits: ()=>getNodeAjaxOptions('get_inherits', partNode, treeNodeInfo, itemNodeData),
@@ -122,7 +122,7 @@ export default class PartitionTableSchema extends BaseUISchema {
     this.getAttachTables = getAttachTables;
 
     this.partitionKeysObj = new PartitionKeysSchema([], getCollations, getOperatorClass);
-    this.partitionsObj = new PartitionsSchema(this.nodeInfo, getCollations, getOperatorClass, getAttachTables, fieldOptions.table_amname_list);
+    this.partitionsObj = new PartitionsSchema(this.nodeInfo, getCollations, getOperatorClass, fieldOptions.table_amname_list, getAttachTables);
     this.constraintsObj = this.schemas.constraints();
   }
 
@@ -236,7 +236,7 @@ export default class PartitionTableSchema extends BaseUISchema {
         return {
           type: 'select', options: this.fieldOptions.table_amname_list,
           controlProps: {
-            allowClear: obj.isNew(state) ? true : false,
+            allowClear: obj.isNew(state),
           }
         };
       }, mode: ['create', 'properties', 'edit'], min_version: 120000,

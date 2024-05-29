@@ -7,17 +7,17 @@
 //
 //////////////////////////////////////////////////////////////
 import React from 'react';
-import { makeStyles } from '@material-ui/core/styles';
+import { makeStyles } from '@mui/styles';
 import clsx from 'clsx';
-import FastForwardIcon from '@material-ui/icons/FastForward';
-import FastRewindIcon from '@material-ui/icons/FastRewind';
-import ChevronRightIcon from '@material-ui/icons/ChevronRight';
-import DoneIcon from '@material-ui/icons/Done';
-import HelpIcon from '@material-ui/icons/HelpRounded';
-import CheckIcon from '@material-ui/icons/Check';
+import FastForwardIcon from '@mui/icons-material/FastForward';
+import FastRewindIcon from '@mui/icons-material/FastRewind';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import DoneIcon from '@mui/icons-material/Done';
+import HelpIcon from '@mui/icons-material/HelpRounded';
+import CheckIcon from '@mui/icons-material/Check';
 import { DefaultButton, PrimaryButton, PgIconButton } from '../../../../static/js/components/Buttons';
 import PropTypes from 'prop-types';
-import { Box } from '@material-ui/core';
+import { Box } from '@mui/material';
 import gettext from 'sources/gettext';
 import Loader from 'sources/components/Loader';
 
@@ -136,7 +136,7 @@ function Wizard({ stepList, onStepChange, onSave, className, ...props }) {
   const classes = useStyles();
   const [activeStep, setActiveStep] = React.useState(0);
   const steps = stepList && stepList.length > 0 ? stepList : [];
-  const [disableNext, setdisableNext] = React.useState(false);
+  const [disableNext, setDisableNext] = React.useState(false);
 
 
   const handleNext = () => {
@@ -177,7 +177,7 @@ function Wizard({ stepList, onStepChange, onSave, className, ...props }) {
 
   React.useEffect(() => {
     if (props.disableNextStep) {
-      setdisableNext(props.disableNextStep(activeStep));
+      setDisableNext(props.disableNextStep(activeStep));
     }
   });
 
@@ -222,7 +222,7 @@ function Wizard({ stepList, onStepChange, onSave, className, ...props }) {
           <DefaultButton onClick={() => handleNext()} className={classes.buttonMargin} startIcon={<FastForwardIcon />} disabled={activeStep == steps.length - 1 || disableNext}>
             {gettext('Next')}
           </DefaultButton>
-          <PrimaryButton className={classes.buttonMargin} startIcon={<CheckIcon />} disabled={activeStep == steps.length - 1 ? false : true} onClick={onSave}>
+          <PrimaryButton className={classes.buttonMargin} startIcon={<CheckIcon />} disabled={activeStep !== (steps.length - 1) } onClick={onSave}>
             {gettext('Finish')}
           </PrimaryButton>
         </Box>

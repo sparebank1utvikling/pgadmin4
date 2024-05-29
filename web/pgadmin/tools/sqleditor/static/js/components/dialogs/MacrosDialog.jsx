@@ -6,7 +6,7 @@
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
-import { makeStyles } from '@material-ui/core';
+import { makeStyles } from '@mui/styles';
 import React from 'react';
 import SchemaView from '../../../../../../static/js/SchemaView';
 import BaseUISchema from '../../../../../../static/js/SchemaView/base_schema.ui';
@@ -159,7 +159,7 @@ export default function MacrosDialog({onClose, onSave}) {
   if(keyOptions.length <= 0) {
     return <></>;
   }
-  return (<>
+  return (
     <SchemaView
       formType={'dialog'}
       getInitData={()=>{
@@ -180,7 +180,7 @@ export default function MacrosDialog({onClose, onSave}) {
       isTabView={false}
       formClassName={classes.root}
     />
-  </>);
+  );
 }
 
 MacrosDialog.propTypes = {

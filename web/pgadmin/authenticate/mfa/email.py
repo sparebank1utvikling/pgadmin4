@@ -239,7 +239,8 @@ class EmailAuthentication(BaseMFAuth):
             label=email_authentication_label(),
             auth_method=EMAIL_AUTH_METHOD,
             message=message,
-            otp_placeholder=_("Enter code here")
+            otp_placeholder=_("Enter code here"),
+            http_code=http_code,
         )
 
     def registration_view(self, _form_data):

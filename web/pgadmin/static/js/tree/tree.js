@@ -20,7 +20,7 @@ function manageTreeEvents(event, eventName, item) {
   let obj = pgAdmin.Browser;
 
   // Events for preferences tree.
-  if (node_metadata.parent && node_metadata.parent.includes('/preferences') && obj.ptree.tree.type == 'preferences') {
+  if (node_metadata.parent?.includes('/preferences') && obj.ptree.tree.type == 'preferences') {
     try {
       obj.Events.trigger(
         'preferences:tree:' + eventName, event, item, d
@@ -39,38 +39,36 @@ function manageTreeEvents(event, eventName, item) {
       console.warn(e.stack || e);
       return false;
     }
-  } else {
+  } else if (d && obj.Nodes[d._type]) {
     // Events for browser tree.
-    if (d && obj.Nodes[d._type]) {
-      node = obj.Nodes[d._type];
+    node = obj.Nodes[d._type];
 
-      // If the Browser tree is not initialised yet
-      if (obj.tree === null) return;
+    // If the Browser tree is not initialised yet
+    if (obj.tree === null) return;
 
-      if (eventName == 'dragstart') {
-        obj.tree.handleDraggable(event, item);
-      }
-      if (eventName == 'added' || eventName == 'beforeopen' || eventName == 'loaded') {
-        obj.tree.addNewNode(item.getMetadata('data').id, item.getMetadata('data'), item, item.parent.path);
-      }
-      if(eventName == 'copied') {
-        obj.tree.copyHandler?.(item.getMetadata('data'), item);
-      }
-      if (_.isObject(node.callbacks) &&
-        eventName in node.callbacks &&
-        typeof node.callbacks[eventName] == 'function') {
-        node.callbacks[eventName].apply(node, [item, d, obj, [], eventName]);
-      }
+    if (eventName == 'dragstart') {
+      obj.tree.handleDraggable(event, item);
+    }
+    if (eventName == 'added' || eventName == 'beforeopen' || eventName == 'loaded') {
+      obj.tree.addNewNode(item.getMetadata('data').id, item.getMetadata('data'), item, item.parent.path);
+    }
+    if(eventName == 'copied') {
+      obj.tree.copyHandler?.(item.getMetadata('data'), item);
+    }
+    if (_.isObject(node.callbacks) &&
+      eventName in node.callbacks &&
+      typeof node.callbacks[eventName] == 'function') {
+      node.callbacks[eventName].apply(node, [item, d, obj, [], eventName]);
+    }
 
-      /* Raise tree events for the nodes */
-      try {
-        obj.Events.trigger(
-          'pgadmin-browser:tree:' + eventName, item, d, node
-        );
-      } catch (e) {
-        console.warn(e.stack || e);
-        return false;
-      }
+    /* Raise tree events for the nodes */
+    try {
+      obj.Events.trigger(
+        'pgadmin-browser:tree:' + eventName, item, d, node
+      );
+    } catch (e) {
+      console.warn(e.stack || e);
+      return false;
     }
   }
   return true;
@@ -80,7 +78,7 @@ function manageTreeEvents(event, eventName, item) {
 export class Tree {
   constructor(tree, manageTree, pgBrowser, type) {
     this.tree = tree;
-    this.tree.type = type ? type : 'browser';
+    this.tree.type = type || 'browser';
     this.tree.onTreeEvents(manageTreeEvents);
 
     this.rootNode = manageTree.tempTree;
@@ -122,7 +120,7 @@ export class Tree {
     this.rootNode.children = [];
     if (model.root) {
       model.root.isExpanded = false;
-      await model.root.hardReloadChildren();
+      return Promise.resolve(await model.root.hardReloadChildren());
     }
   }
 
@@ -191,7 +189,7 @@ export class Tree {
   }
 
   async addIcon(item, icon) {
-    if (item !== undefined && item.getMetadata('data') !== undefined) {
+    if (item?.getMetadata('data') !== undefined) {
       item.getMetadata('data').icon = icon.icon;
     }
     await this.tree.addIcon(item, icon);
@@ -231,7 +229,7 @@ export class Tree {
   }
 
   wasLoad(item) {
-    if (item && item.type === FileType.Directory) {
+    if (item?.type === FileType.Directory) {
       return item.isExpanded && item.children != null && item.children.length > 0;
     }
     return true;
@@ -247,7 +245,7 @@ export class Tree {
       return model.root.children[0];
     }
 
-    if (item !== undefined && item !== null && item.branchSize > 0) {
+    if (item?.branchSize > 0) {
       return item.children[0];
     }
 
@@ -301,7 +299,7 @@ export class Tree {
   }
 
   hasParent(item) {
-    return item && item.parent ? true : false;
+    return item?.parent;
   }
 
   isOpen(item) {
@@ -319,11 +317,11 @@ export class Tree {
   }
 
   itemData(item) {
-    return (item !== undefined && item !== null && item.getMetadata('data') !== undefined) ? item._metadata.data : [];
+    return (item?.getMetadata('data') !== undefined) ? item?._metadata.data : [];
   }
 
   getData(item) {
-    return (item !== undefined && item.getMetadata('data') !== undefined) ? item._metadata.data : [];
+    return (item?.getMetadata('data') !== undefined) ? item?._metadata.data : [];
   }
 
   isRootNode(item) {
@@ -334,7 +332,7 @@ export class Tree {
   isInode(item) {
     const children = this.children(item);
     if (children === null || children === undefined) return false;
-    return children.length > 0 ? true : false;
+    return children.length > 0;
   }
 
   selected() {
@@ -349,7 +347,7 @@ export class Tree {
     let tree = this;
 
     if (path == null || !Array.isArray(path)) {
-      return Promise.reject();
+      return Promise.reject(new Error(null));
     }
     const basepath = '/browser/' + path.slice(0, path.length-1).join('/') + '/';
     path = '/browser/' + path.join('/');
@@ -368,7 +366,7 @@ export class Tree {
          * the path for currentNode itself is not matching
          */
         if (currentNode.path !== undefined && !onCorrectPath(currentNode.path)) {
-          reject(null);
+          reject(new Error(null));
         } else if (currentNode.path === path) {
           resolve(currentNode);
         } else {
@@ -382,10 +380,10 @@ export class Tree {
                   return;
                 }
               }
-              reject(null);
+              reject(new Error(null));
             })
             .catch(() => {
-              reject(null);
+              reject(new Error(null));
             });
         }
       });
@@ -405,13 +403,13 @@ export class Tree {
       currItem = currItem.parent;
     }
     retStack = retStack.reverse();
-    if(separator == false) return retStack;
+    if(!separator) return retStack;
     return retStack.join(separator);
   }
 
   findNodeByDomElement(domElement) {
-    const path = domElement.path;
-    if (!path || !path[0]) {
+    const path = domElement?.path;
+    if (!path?.[0]) {
       return undefined;
     }
 
@@ -425,7 +423,7 @@ export class Tree {
   }
 
   findNode(path) {
-    if (path === null || path === undefined || path.length === 0) {
+    if (path === null || path === undefined || path.length === 0 || path == '/browser') {
       return this.rootNode;
     }
     return findInTree(this.rootNode, path);
@@ -433,7 +431,7 @@ export class Tree {
 
   createOrUpdateNode(id, data, parent, domNode) {
     let oldNodePath = id;
-    if (parent !== null && parent !== undefined && parent.path !== undefined && parent.path != '/browser') {
+    if (parent?.path != '/browser') {
       oldNodePath = parent.path + '/' + id;
     }
     const oldNode = this.findNode(oldNodePath);
@@ -510,12 +508,10 @@ export class Tree {
       Object.keys(typeOrTypeDict).forEach((type) => {
         this.registerDraggableType(type, typeOrTypeDict[type]);
       });
-    } else {
-      if (dropDetailsFunc != null) {
-        typeOrTypeDict.replace(/ +/, ' ').split(' ').forEach((type) => {
-          this.draggableTypes[type] = dropDetailsFunc;
-        });
-      }
+    } else if (dropDetailsFunc != null) {
+      typeOrTypeDict.replace(/ +/, ' ').split(' ').forEach((type) => {
+        this.draggableTypes[type] = dropDetailsFunc;
+      });
     }
   }
 
@@ -542,16 +538,14 @@ export class Tree {
             to: dropDetails.length,
           },
         };
-      } else {
-        if (!dropDetails.cur) {
-          dropDetails = {
-            ...dropDetails,
-            cur: {
-              from: dropDetails.text.length,
-              to: dropDetails.text.length,
-            },
-          };
-        }
+      } else if (!dropDetails.cur) {
+        dropDetails = {
+          ...dropDetails,
+          cur: {
+            from: dropDetails.text.length,
+            to: dropDetails.text.length,
+          },
+        };
       }
 
       e.dataTransfer.setData('text', JSON.stringify(dropDetails));
@@ -563,10 +557,14 @@ export class Tree {
       /* setDragImage is not supported in IE. We leave it to
       * its default look and feel
       */
+      const dropText = _.escape(dropDetails.text);
+      if(!dropText) {
+        e.preventDefault();
+      }
       if (e.dataTransfer.setDragImage) {
         const dragItem = document.createElement('div');
         dragItem.classList.add('drag-tree-node');
-        dragItem.innerHTML = `<span>${_.escape(dropDetails.text)}</span>`;
+        dragItem.innerHTML = `<span>${dropText}</span>`;
 
         document.querySelector('body .drag-tree-node')?.remove();
         document.body.appendChild(dragItem);
@@ -623,6 +621,6 @@ export function findInTree(rootNode, path) {
   })(rootNode);
 }
 
-let isValidTreeNodeData = (data) => (!_.isEmpty(data));
+const isValidTreeNodeData = (data) => (!_.isEmpty(data));
 
 export { isValidTreeNodeData };

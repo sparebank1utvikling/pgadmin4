@@ -7,7 +7,7 @@
 //
 //////////////////////////////////////////////////////////////
 
-import { makeStyles } from '@material-ui/core';
+import { makeStyles } from '@mui/styles';
 import React from 'react';
 import PropTypes from 'prop-types';
 import gettext from 'sources/gettext';
@@ -34,9 +34,10 @@ class ChangePasswordSchema extends BaseUISchema {
         id: 'user', label: gettext('User'), type: 'text', disabled: true, visible: this.showUser
       }, {
         id: 'password', label: gettext('Current Password'), type: 'password',
-        disabled: self.isPgpassFileUsed, noEmpty: self.isPgpassFileUsed ? false : true,
+        disabled: self.isPgpassFileUsed, noEmpty: !self.isPgpassFileUsed,
         controlProps: {
-          maxLength: null
+          maxLength: null,
+          autoComplete: 'new-password'
         }
       }, {
         id: 'newPassword', label: gettext('New Password'), type: 'password',
@@ -102,8 +103,6 @@ export default function ChangePasswordContent({getInitData=() => { /*This is int
 ChangePasswordContent.propTypes = {
   onSave: PropTypes.func,
   onClose: PropTypes.func,
-  userName: PropTypes.string,
-  isPgpassFileUsed: PropTypes.bool,
   getInitData: PropTypes.func,
   hasCsrfToken: PropTypes.bool,
   showUser: PropTypes.bool

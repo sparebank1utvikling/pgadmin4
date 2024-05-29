@@ -7,7 +7,7 @@
 //
 //////////////////////////////////////////////////////////////
 import React from 'react';
-import { makeStyles } from '@material-ui/core';
+import { makeStyles } from '@mui/styles';
 import SchemaView from '../../../../static/js/SchemaView';
 import BaseUISchema from '../../../../static/js/SchemaView/base_schema.ui';
 import pgAdmin from 'sources/pgadmin';
@@ -37,7 +37,7 @@ class UserManagementCollection extends BaseUISchema {
     });
 
     this.authOnlyInternal = (current_user['auth_sources'].length  == 1 &&
-      current_user['auth_sources'].includes(AUTH_METHODS['INTERNAL'])) ? true : false;
+      current_user['auth_sources'].includes(AUTH_METHODS['INTERNAL']));
     this.authSources = authSources;
     this.roleOptions = roleOptions;
   }
@@ -146,7 +146,7 @@ class UserManagementCollection extends BaseUISchema {
   }
 
   validate(state, setError) {
-    let msg = undefined;
+    let msg;
     let obj = this;
     let minPassLen = pgAdmin.password_length_min;
     if (obj.isUserNameEnabled(state) && isEmptyString(state.username)) {

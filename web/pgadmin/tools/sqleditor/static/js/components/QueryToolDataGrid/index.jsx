@@ -6,18 +6,19 @@
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
-import { Box, makeStyles } from '@material-ui/core';
+import { Box } from '@mui/material';
+import { makeStyles } from '@mui/styles';
 import _ from 'lodash';
-import React, {useState, useEffect, useContext, useRef, useLayoutEffect} from 'react';
+import React, {useState, useEffect, useContext, useRef, useLayoutEffect, useMemo} from 'react';
 import {Row, useRowSelection} from 'react-data-grid';
-import LockIcon from '@material-ui/icons/Lock';
-import EditIcon from '@material-ui/icons/Edit';
+import LockIcon from '@mui/icons-material/Lock';
+import EditIcon from '@mui/icons-material/Edit';
 import { QUERY_TOOL_EVENTS } from '../QueryToolConstants';
 import * as Editors from './Editors';
 import * as Formatters from './Formatters';
 import clsx from 'clsx';
 import { PgIconButton } from '../../../../../../static/js/components/Buttons';
-import MapIcon from '@material-ui/icons/Map';
+import MapIcon from '@mui/icons-material/Map';
 import { QueryToolEventsContext } from '../QueryToolComponent';
 import PropTypes from 'prop-types';
 import gettext from 'sources/gettext';
@@ -72,12 +73,14 @@ export const DataGridExtrasContext = React.createContext();
 function CustomRow(props) {
   const rowRef = useRef();
   const dataGridExtras = useContext(DataGridExtrasContext);
-  const rowInfoValue = {
+
+  const rowInfoValue = useMemo(()=>({
     rowIdx: props.rowIdx,
     getCellElement: (colIdx)=>{
       return rowRef.current?.querySelector(`.rdg-cell[aria-colindex="${colIdx+1}"]`);
     }
-  };
+  }), [props.rowIdx]);
+
   if(!props.isRowSelected && props.selectedCellIdx > 0) {
     dataGridExtras.onSelectedCellChange?.([props.row, props.viewportColumns?.find(columns => columns.idx === props.selectedCellIdx)]);
   } else if(props.selectedCellIdx == 0) {
@@ -291,7 +294,7 @@ function RowNumColFormatter({row, rowKeyGetter, dataChangeStore, onSelectedColum
   return (<div className={classes.rowNumCell} onClick={()=>{
     onSelectedColumnsChange(new Set());
     onRowSelectionChange({ row: row, checked: !isRowSelected, isShiftClick: false});
-  }}>
+  }} onKeyDown={()=>{/* already taken care by parent */}}>
     {rownum}
   </div>);
 }
@@ -361,30 +364,34 @@ function getTextWidth(column, rows, canvas, columnWidthBy) {
 export default function QueryToolDataGrid({columns, rows, totalRowCount, dataChangeStore,
   onSelectedCellChange, selectedColumns, onSelectedColumnsChange, columnWidthBy, ...props}) {
   const classes = useStyles();
-  const [readyColumns, setColumns] = useState([]);
+  const [readyColumns, setReadyColumns] = useState([]);
   const eventBus = useContext(QueryToolEventsContext);
   const onSelectedColumnsChangeWrapped = (arg)=>{
     props.onSelectedRowsChange(new Set());
     onSelectedColumnsChange(arg);
   };
 
-  useEffect(()=>{
-    let initCols = initialiseColumns(columns, rows, totalRowCount, columnWidthBy);
-    setColumns(formatColumns(initCols, dataChangeStore, selectedColumns, onSelectedColumnsChangeWrapped, props.rowKeyGetter, classes));
-  }, [columns]);
-
-  useEffect(()=>{
-    setColumns((prevCols)=>{
-      return formatColumns(prevCols, dataChangeStore, selectedColumns, onSelectedColumnsChangeWrapped, props.rowKeyGetter, classes);
-    });
-  }, [dataChangeStore, selectedColumns]);
-
   function handleCopy() {
     eventBus.fireEvent(QUERY_TOOL_EVENTS.TRIGGER_COPY_DATA);
   }
 
+  const dataGridExtras = useMemo(()=>({
+    onSelectedCellChange, handleCopy
+  }), [onSelectedCellChange]);
+
+  useEffect(()=>{
+    let initCols = initialiseColumns(columns, rows, totalRowCount, columnWidthBy);
+    setReadyColumns(formatColumns(initCols, dataChangeStore, selectedColumns, onSelectedColumnsChangeWrapped, props.rowKeyGetter, classes));
+  }, [columns]);
+
+  useEffect(()=>{
+    setReadyColumns((prevCols)=>{
+      return formatColumns(prevCols, dataChangeStore, selectedColumns, onSelectedColumnsChangeWrapped, props.rowKeyGetter, classes);
+    });
+  }, [dataChangeStore, selectedColumns]);
+
   return (
-    <DataGridExtrasContext.Provider value={{onSelectedCellChange, handleCopy}}>
+    <DataGridExtrasContext.Provider value={dataGridExtras}>
       <PgReactDataGrid
         id="datagrid"
         columns={readyColumns}

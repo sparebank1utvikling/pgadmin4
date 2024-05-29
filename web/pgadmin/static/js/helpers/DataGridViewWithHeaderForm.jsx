@@ -8,7 +8,8 @@
 //////////////////////////////////////////////////////////////
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Box, makeStyles } from '@material-ui/core';
+import { Box } from '@mui/material';
+import { makeStyles } from '@mui/styles';
 import DataGridView, { DataGridHeader } from '../SchemaView/DataGridView';
 import SchemaView, { SCHEMA_STATE_ACTIONS } from '../SchemaView';
 import { DefaultButton } from '../components/Buttons';
@@ -35,7 +36,7 @@ export default function DataGridViewWithHeaderForm(props) {
   const classes = useStyles();
   const headerFormData = useRef({});
   const schemaRef = useRef(otherProps.schema);
-  const [isAddDisabled, setAddDisabled] = useState(true);
+  const [addDisabled, setAddDisabled] = useState(true);
   const [headerFormResetKey, setHeaderFormResetKey] = useState(0);
   const onAddClick = useCallback(()=>{
     if(!otherProps.canAddRow) {
@@ -79,7 +80,7 @@ export default function DataGridViewWithHeaderForm(props) {
             resetKey={headerFormResetKey}
           />
           <Box display="flex">
-            <DefaultButton className={classes.addBtn} onClick={onAddClick} disabled={isAddDisabled}>Add</DefaultButton>
+            <DefaultButton className={classes.addBtn} onClick={onAddClick} disabled={addDisabled}>Add</DefaultButton>
           </Box>
         </Box>}
       </Box>

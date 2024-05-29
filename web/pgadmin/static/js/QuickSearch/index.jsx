@@ -7,7 +7,8 @@
 //
 //////////////////////////////////////////////////////////////
 import React, {useRef,useState, useEffect} from 'react';
-import { CircularProgress, Typography, makeStyles } from '@material-ui/core';
+import { CircularProgress, Typography } from '@mui/material';
+import { makeStyles } from '@mui/styles';
 import clsx from 'clsx';
 import {useDelayDebounce} from 'sources/custom_hooks';
 import {onlineHelpSearch} from './online_help';
@@ -94,7 +95,7 @@ function HelpArticleContents({isHelpLoading, isMenuLoading, helpSearchResult}) {
         }
       </div>
       <SearchLoader loading={true} />
-    </div>) : '';
+    </div>) : <></>;
 }
 
 HelpArticleContents.propTypes = {
@@ -103,14 +104,7 @@ HelpArticleContents.propTypes = {
   isMenuLoading: PropTypes.bool
 };
 
-const useModalStyles = makeStyles(() => ({
-  setTop: {
-    marginTop: '-20px',
-  }
-}));
-
 export default function QuickSearch({closeModal}) {
-  const modalClasses = useModalStyles();
   const classes = useStyles();
   const wrapperRef = useRef(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -265,8 +259,8 @@ export default function QuickSearch({closeModal}) {
   useOutsideAlerter(wrapperRef);
 
   return (
-    <div id='quick-search-container' onClick={setSearchTerm}></div>,
-    <div id='quick-search-container' ref={wrapperRef} className={clsx('test', modalClasses.setTop)} role="menu">
+    <div id='quick-search-container' onClick={setSearchTerm} onKeyDown={()=>{/* no need */}}></div>,
+    <div id='quick-search-container' ref={wrapperRef} role="menu">
       <div>
         <div>
           <div style={{padding: '2px 2px 2px 2px'}}>

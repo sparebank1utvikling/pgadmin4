@@ -9,11 +9,11 @@
 import React, { useState, useEffect, useRef, useReducer, useMemo } from 'react';
 import gettext from 'sources/gettext';
 import PropTypes from 'prop-types';
-import { makeStyles } from '@material-ui/core/styles';
+import { makeStyles } from '@mui/styles';
 import url_for from 'sources/url_for';
 import {getGCD, getEpoch} from 'sources/utils';
-import ChartContainer from '../ChartContainer';
-import { Grid } from '@material-ui/core';
+import ChartContainer from '../components/ChartContainer';
+import { Grid } from '@mui/material';
 import { DATA_POINT_SIZE } from 'sources/chartjs';
 import StreamingChart from '../../../../static/js/components/PgChart/StreamingChart';
 import {useInterval, usePrevious} from 'sources/custom_hooks';
@@ -171,8 +171,6 @@ export default function Storage({preferences, sid, did, pageVisible, enablePoll=
 
   const [diskStats, setDiskStats] = useState([]);
   const [ioInfo, ioInfoReduce] = useReducer(ioStatsReducer, chartsDefault['io_stats']);
-
-  const [, setCounterData] = useState({});
 
   const [pollDelay, setPollDelay] = useState(5000);
   const [errorMsg, setErrorMsg] = useState(null);
@@ -351,18 +349,10 @@ export default function Storage({preferences, sid, did, pageVisible, enablePoll=
           }
           ioInfoReduce({incoming: new_io_stats});
         }
-
-        setCounterData((prevCounterData)=>{
-          return {
-            ...prevCounterData,
-            ...data,
-          };
-        });
       })
       .catch((error)=>{
         if(!errorMsg) {
           ioInfoReduce({reset:chartsDefault['io_stats']});
-          setCounterData({});
           if(error.response) {
             if (error.response.status === 428) {
               setErrorMsg(gettext('Please connect to the selected server to view the graph.'));
@@ -392,7 +382,6 @@ export default function Storage({preferences, sid, did, pageVisible, enablePoll=
           showTooltip={preferences['graph_mouse_track']}
           showDataPoints={preferences['graph_data_points']}
           lineBorderWidth={preferences['graph_line_border_width']}
-          isDatabase={did > 0}
           isTest={false}
         />
       }
@@ -522,20 +511,20 @@ export function StorageWrapper(props) {
           </Grid>
         </Grid>
       </Grid>
-      <Grid container spacing={1} className={classes.container}>
+      <Grid container spacing={0.5} className={classes.container}>
         {Object.keys(props.ioInfo).map((drive, index) => (
           <Grid key={`disk-${index}`} container spacing={1} className={classes.container}>
             <div className={classes.driveContainer}>
               <Grid container spacing={1} className={classes.driveContainerHeader}>
                 <div className={classes.containerHeaderText}>{gettext(drive)}</div>
               </Grid>
-              <Grid container spacing={1} className={classes.driveContainerBody}>
+              <Grid container spacing={0.5} className={classes.driveContainerBody}>
                 {Object.keys(props.ioInfo[drive]).map((type, innerKeyIndex) => (
                   <Grid key={`${type}-${innerKeyIndex}`} item md={4} sm={6}>
                     <ChartContainer id={`io-graph-${type}`} title={type.endsWith('_bytes_rw') ? gettext('Data transfer'): type.endsWith('_total_rw') ? gettext('I/O operations count'): type.endsWith('_time_rw') ? gettext('Time spent in I/O operations'):''} datasets={transformData(props.ioInfo[drive][type], props.ioRefreshRate).datasets}  errorMsg={props.errorMsg} isTest={props.isTest}>
                       <StreamingChart data={transformData(props.ioInfo[drive][type], props.ioRefreshRate)} dataPointSize={DATA_POINT_SIZE} xRange={X_AXIS_LENGTH} options={options}
                         valueFormatter={(v)=>{
-                          return type.endsWith('_time_rw') ? toPrettySize(v, 'ms') : toPrettySize(v);
+                          return type.endsWith('_time_rw') ? toPrettySize(v, 'ms') : type.endsWith('_total_rw') ? toPrettySize(v, ''): toPrettySize(v);
                         }} />
                     </ChartContainer>
                   </Grid>
@@ -565,6 +554,5 @@ StorageWrapper.propTypes = {
   showTooltip: PropTypes.bool.isRequired,
   showDataPoints: PropTypes.bool.isRequired,
   lineBorderWidth: PropTypes.number.isRequired,
-  isDatabase: PropTypes.bool.isRequired,
   isTest: PropTypes.bool,
 };

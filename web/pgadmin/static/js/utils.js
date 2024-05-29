@@ -14,18 +14,50 @@ import convert from 'convert-units';
 import getApiInstance from './api_instance';
 import usePreferences from '../../preferences/static/js/store';
 import pgAdmin from 'sources/pgadmin';
+import { isMac } from './keyboard_shortcuts';
 
 export function parseShortcutValue(obj) {
   let shortcut = '';
+  if (!obj){
+    return null;
+  }
   if (obj.alt) { shortcut += 'alt+'; }
   if (obj.shift) { shortcut += 'shift+'; }
   if (obj.control) { shortcut += 'ctrl+'; }
-  shortcut += obj.key.char.toLowerCase();
+  shortcut += obj?.key.char?.toLowerCase();
+  return shortcut;
+}
+
+export function isShortcutValue(obj) {
+  if(!obj) return false;
+  return [obj.alt, obj.control, obj?.key, obj?.key?.char].every((k)=>!_.isUndefined(k));
+}
+
+// Convert shortcut obj to codemirror key format
+export function toCodeMirrorKey(obj) {
+  let shortcut = '';
+  if (!obj){
+    return shortcut;
+  }
+  if (obj.alt) { shortcut += 'Alt-'; }
+  if (obj.shift) { shortcut += 'Shift-'; }
+  if (obj.control) {
+    if(isMac() && obj.ctrl_is_meta) {
+      shortcut += 'Meta-';
+    } else {
+      shortcut += 'Ctrl-';
+    }
+  }
+  if(obj?.key.char?.length == 1) {
+    shortcut += obj?.key.char?.toLowerCase();
+  } else {
+    shortcut += obj?.key.char;
+  }
   return shortcut;
 }
 
 export function getEpoch(inp_date) {
-  let date_obj = inp_date ? inp_date : new Date();
+  let date_obj = inp_date || new Date();
   return parseInt(date_obj.getTime()/1000);
 }
 
@@ -385,6 +417,10 @@ export function downloadBlob(blob, fileName) {
 
 export function toPrettySize(rawSize, from='B') {
   try {
+    //if the integer need to be converted to K for thousands, M for millions , B for billions only
+    if (from == '') {
+      return Intl.NumberFormat('en', {notation: 'compact'}).format(rawSize);
+    }
     let conVal = convert(rawSize).from(from).toBest();
     conVal.val = Math.round(conVal.val * 100) / 100;
     return `${conVal.val} ${conVal.unit}`;
@@ -573,4 +609,35 @@ export function gettextForTranslation(translations, ...replaceArgs) {
     console.error(e);
     return rawTranslation;
   }
+}
+
+// https://developer.mozilla.org/en-US/docs/Web/API/Window/cancelAnimationFrame
+const requestAnimationFrame =
+  window.requestAnimationFrame ||
+  window.mozRequestAnimationFrame ||
+  window.webkitRequestAnimationFrame ||
+  window.msRequestAnimationFrame;
+
+const cancelAnimationFrame =
+  window.cancelAnimationFrame || window.mozCancelAnimationFrame;
+
+/* Usefull in focussing an element after it appears on the screen */
+export function requestAnimationAndFocus(ele) {
+  if(!ele) return;
+
+  const animateId = requestAnimationFrame(()=>{
+    ele?.focus?.();
+    cancelAnimationFrame(animateId);
+  });
+}
+
+
+export function scrollbarWidth() {
+  // thanks too https://davidwalsh.name/detect-scrollbar-width
+  const scrollDiv = document.createElement('div');
+  scrollDiv.setAttribute('style', 'width: 100px; height: 100px; overflow: scroll; position:absolute; top:-9999px;');
+  document.body.appendChild(scrollDiv);
+  const scrollbarWidth = scrollDiv.offsetWidth - scrollDiv.clientWidth;
+  document.body.removeChild(scrollDiv);
+  return scrollbarWidth;
 }

@@ -15,6 +15,7 @@ import builtins
 import logging
 import os
 import sys
+from collections import OrderedDict
 
 # We need to include the root directory in sys.path to ensure that we can
 # find everything we need when running in the standalone runtime.
@@ -30,46 +31,10 @@ CONFIG_DATABASE_CONNECTION_POOL_SIZE = 5
 CONFIG_DATABASE_CONNECTION_MAX_OVERFLOW = 100
 
 from pgadmin.utils import env, IS_WIN, fs_short_path
-
-##########################################################################
-# Application settings
-##########################################################################
-
-# Name of the application to display in the UI
-APP_NAME = 'pgAdmin 4'
-APP_ICON = 'pg-icon'
-
-##########################################################################
-# Application settings
-##########################################################################
-
-# NOTE!!!
-# If you change any of APP_RELEASE, APP_REVISION or APP_SUFFIX, then you
-# must also change APP_VERSION_INT to match.
-#
-
-# Application version number components
-APP_RELEASE = 8
-APP_REVISION = 2
-
-# Application version suffix, e.g. 'beta1', 'dev'. Usually an empty string
-# for GA releases.
-APP_SUFFIX = ''
-
-# Numeric application version for upgrade checks. Should be in the format:
-# [X]XYYZZ, where X is the release version, Y is the revision, with a leading
-# zero if needed, and Z represents the suffix, with a leading zero if needed
-APP_VERSION_INT = 80200
-
-# DO NOT CHANGE!
-# The application version string, constructed from the components
-if not APP_SUFFIX:
-    APP_VERSION = '%s.%s' % (APP_RELEASE, APP_REVISION)
-else:
-    APP_VERSION = '%s.%s-%s' % (APP_RELEASE, APP_REVISION, APP_SUFFIX)
-
-# Copyright string for display in the app
-APP_COPYRIGHT = 'Copyright (C) 2013 - 2024, The pgAdmin Development Team'
+from version import APP_VERSION, APP_RELEASE, APP_REVISION, APP_SUFFIX, \
+    APP_VERSION_INT
+from branding import APP_NAME, APP_ICON, APP_COPYRIGHT, APP_PATH, \
+    APP_WIN_PATH, APP_SHORT_NAME, APP_DEFAULT_EMAIL
 
 ##########################################################################
 # Misc stuff
@@ -133,7 +98,7 @@ WTF_CSRF_HEADERS = ['X-pgA-CSRFToken']
 
 # User ID (email address) to use for the default user in desktop mode.
 # The default should be fine here, as it's not exposed in the app.
-DESKTOP_USER = 'pgadmin4@pgadmin.org'
+DESKTOP_USER = APP_DEFAULT_EMAIL
 
 # This option allows the user to host the application on a LAN
 # Default hosting is on localhost (DEFAULT_SERVER='localhost').
@@ -250,18 +215,21 @@ APP_VERSION_EXTN = ('.css', '.js', '.html', '.svg', '.png', '.gif', '.ico')
 
 # Data directory for storage of config settings etc. This shouldn't normally
 # need to be changed - it's here as various other settings depend on it.
-# On Windows, we always store data in %APPDATA%\pgAdmin. On other platforms,
-# if we're in server mode we use /var/lib/pgadmin, otherwise ~/.pgadmin
+# On Windows, we always store data in %APPDATA%\$(APP_WIN_PATH). On other
+# platforms, if we're in server mode we use /var/lib/$(APP_PATH),
+# otherwise ~/.$(APP_PATH)
 if IS_WIN:
     # Use the short path on windows
     DATA_DIR = os.path.realpath(
-        os.path.join(fs_short_path(env('APPDATA')), "pgAdmin")
+        os.path.join(fs_short_path(env('APPDATA')), APP_WIN_PATH)
     )
 else:
     if SERVER_MODE:
-        DATA_DIR = '/var/lib/pgadmin'
+        DATA_DIR = os.path.join('/var/lib/', APP_PATH)
     else:
-        DATA_DIR = os.path.realpath(os.path.expanduser('~/.pgadmin/'))
+        DATA_DIR = os.path.realpath(
+            os.path.expanduser('~/' + '.' + APP_PATH + '/')
+        )
 
 # An optional login banner to show security warnings/disclaimers etc. at
 # login and password recovery etc. HTML may be included for basic formatting,
@@ -289,15 +257,29 @@ CONSOLE_LOG_LEVEL = logging.WARNING
 FILE_LOG_LEVEL = logging.WARNING
 
 # Log format.
+JSON_LOGGER = False
+CONSOLE_LOG_FORMAT_JSON = OrderedDict([
+    ("time", "asctime"),
+    ("message", "message"),
+    ("level", "levelname")
+])
+
+FILE_LOG_FORMAT_JSON = OrderedDict([
+    ("time", "asctime"),
+    ("message", "message"),
+    ("level", "levelname")
+])
+
+
 CONSOLE_LOG_FORMAT = '%(asctime)s: %(levelname)s\t%(name)s:\t%(message)s'
 FILE_LOG_FORMAT = '%(asctime)s: %(levelname)s\t%(name)s:\t%(message)s'
 
 # Log file name. This goes in the data directory, except on non-Windows
 # platforms in server mode.
 if SERVER_MODE and not IS_WIN:
-    LOG_FILE = '/var/log/pgadmin/pgadmin4.log'
+    LOG_FILE = os.path.join('/var/log', APP_PATH, APP_SHORT_NAME + '.log')
 else:
-    LOG_FILE = os.path.join(DATA_DIR, 'pgadmin4.log')
+    LOG_FILE = os.path.join(DATA_DIR, APP_SHORT_NAME + '.log')
 
 # Log rotation setting
 # Log file will be rotated considering values for LOG_ROTATION_SIZE
@@ -341,7 +323,8 @@ CONFIG_DATABASE_URI = ''
 # The default path to the SQLite database used to store user accounts and
 # settings. This default places the file in the same directory as this
 # config file, but generates an absolute path for use througout the app.
-SQLITE_PATH = env('SQLITE_PATH') or os.path.join(DATA_DIR, 'pgadmin4.db')
+SQLITE_PATH = env('SQLITE_PATH') or \
+    os.path.join(DATA_DIR, APP_SHORT_NAME + '.db')
 
 # SQLITE_TIMEOUT will define how long to wait before throwing the error -
 # OperationError due to database lock. On slower system, you may need to change
@@ -472,6 +455,26 @@ STORAGE_DIR = os.path.join(DATA_DIR, 'storage')
 #
 ##########################################################################
 DEFAULT_BINARY_PATHS = {
+    "pg": "",
+    "pg-12": "",
+    "pg-13": "",
+    "pg-14": "",
+    "pg-15": "",
+    "pg-16": "",
+    "ppas": "",
+    "ppas-12": "",
+    "ppas-13": "",
+    "ppas-14": "",
+    "ppas-15": "",
+    "ppas-16": ""
+}
+
+##########################################################################
+
+# Admin can specify fixed binary paths to prevent users from changing.
+# It will take precedence over DEFAULT_BINARY_PATHS.
+
+FIXED_BINARY_PATHS = {
     "pg": "",
     "pg-12": "",
     "pg-13": "",
@@ -819,7 +822,12 @@ OAUTH2_CONFIG = [
         # for OAuth2 provider.
         # This may need to set False, in case of self-signed certificates.
         # Ref: https://github.com/psf/requests/issues/6071
-        'OAUTH2_SSL_CERT_VERIFICATION': True
+        'OAUTH2_SSL_CERT_VERIFICATION': True,
+        # set this variable to invalidate the session of the oauth2 provider
+        # Example for keycloak:
+        # 'OAUTH2_LOGOUT_URL':
+        # 'https://example.com/realms/master/protocol/openid-connect/logout?post_logout_redirect_uri={redirect_uri}&id_token_hint={id_token}'
+        'OAUTH2_LOGOUT_URL': None
     }
 ]
 
@@ -908,6 +916,14 @@ AUTO_DISCOVER_SERVERS = True
 # browser tab is closed.
 #############################################################################
 SERVER_HEARTBEAT_TIMEOUT = 30  # In seconds
+
+#############################################################################
+# ENABLE_SERVER_PASS_EXEC_CMD is used to enable/disable Password exec command
+# field in server properties. This is used to specify a shell command to be
+# executed to retrieve a password to be used for server authentication.
+# This setting is applicable only for server mode.
+#############################################################################
+ENABLE_SERVER_PASS_EXEC_CMD = False
 
 #############################################################################
 # Patch the default config with custom config and other manipulations

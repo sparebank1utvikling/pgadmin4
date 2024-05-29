@@ -38,7 +38,7 @@ export function getNodeTableSchema(treeNodeInfo, itemNodeData, pgBrowser) {
         cacheLevel: 'database'
       }, (d)=>{
         // If schema name start with pg_* then we need to exclude them
-        return !(d && d.label.match(/^pg_/));
+        return !(d?.label.match(/^pg_/));
       }),
       spcname: spcname,
       coll_inherits: ()=>getNodeAjaxOptions('get_inherits', tableNode, treeNodeInfo, itemNodeData),
@@ -367,10 +367,10 @@ export default class TableSchema extends BaseUISchema {
     this.nodeInfo = nodeInfo;
     this.getColumns = getColumns;
 
-    this.partitionsObj = new PartitionsSchema(this.nodeInfo, getCollations, getOperatorClass, getAttachTables, fieldOptions.table_amname_list);
-    this.constraintsObj = this.schemas.constraints && this.schemas.constraints() || {};
-    this.columnsSchema = this.schemas.columns && this.schemas.columns() || {};
-    this.vacuumSettingsSchema = this.schemas.vacuum_settings && this.schemas.vacuum_settings() || {};
+    this.partitionsObj = new PartitionsSchema(this.nodeInfo, getCollations, getOperatorClass, fieldOptions.table_amname_list, getAttachTables);
+    this.constraintsObj = this.schemas.constraints?.() || {};
+    this.columnsSchema = this.schemas.columns?.() || {};
+    this.vacuumSettingsSchema = this.schemas.vacuum_settings?.() || {};
     this.partitionKeysObj = new PartitionKeysSchema([], getCollations, getOperatorClass);
     this.inErd = inErd;
   }
@@ -448,7 +448,7 @@ export default class TableSchema extends BaseUISchema {
   }
 
   changeColumnOptions(columns) {
-    let colOptions = (columns||[]).map((c)=>({label: c.name, value: c.name, image:'icon-column'}));
+    let colOptions = (columns||[]).map((c)=>({label: c.name, value: c.name, image:'icon-column', cid:c.cid}));
     this.constraintsObj.changeColumnOptions(colOptions);
     this.partitionKeysObj.changeColumnOptions(colOptions);
     this.partitionsObj.changeColumnOptions(colOptions);
@@ -464,7 +464,7 @@ export default class TableSchema extends BaseUISchema {
       id: 'oid', label: gettext('OID'), type: 'text', mode: ['properties'],
     },{
       id: 'relowner', label: gettext('Owner'), type: 'select',
-      options: this.fieldOptions.relowner, noEmpty: this.inErd ? false : true,
+      options: this.fieldOptions.relowner, noEmpty: !this.inErd,
       mode: ['properties', 'create', 'edit'], controlProps: {allowClear: false},
       readonly: this.inCatalog, visible: !this.inErd,
     },{
@@ -480,7 +480,7 @@ export default class TableSchema extends BaseUISchema {
         return {
           type: 'select', options: this.fieldOptions.spcname,
           controlProps: {
-            allowClear: obj.isNew(state) ? true : false,
+            allowClear: obj.isNew(state),
           }
         };
       }
@@ -682,11 +682,12 @@ export default class TableSchema extends BaseUISchema {
               let currPk = state.primary_key[0];
               /* If col is not PK, remove it */
               if(!columnData.is_primary_key) {
-                currPk.columns = _.filter(currPk.columns, (c)=>c.column !== columnData.name);
+                currPk.columns = _.filter(currPk.columns, (c)=>c.cid !== columnData.cid);
               } else {
-                currPk.columns = _.filter(currPk.columns, (c)=>c.column !== columnData.name);
+                currPk.columns = _.filter(currPk.columns, (c)=>c.cid !== columnData.cid);
                 currPk.columns.push({
                   column: columnData.name,
+                  cid: columnData.cid,
                 });
               }
               /* Remove the PK if all columns not PK */
@@ -699,7 +700,7 @@ export default class TableSchema extends BaseUISchema {
               /* Create PK if none */
               return {primary_key: [
                 obj.constraintsObj.primaryKeyObj.getNewData({
-                  columns: [{column: columnData.name}],
+                  columns: [{column: columnData.name, cid: columnData.cid}],
                 })
               ]};
             }
@@ -781,7 +782,7 @@ export default class TableSchema extends BaseUISchema {
         return {
           type: 'select', options: this.fieldOptions.table_amname_list,
           controlProps: {
-            allowClear: obj.isNew(state) ? true : false,
+            allowClear: obj.isNew(state),
           }
         };
       }, mode: ['create', 'properties', 'edit'], min_version: 120000,

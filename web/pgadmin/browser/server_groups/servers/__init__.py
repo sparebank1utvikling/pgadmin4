@@ -13,8 +13,10 @@ import pgadmin.browser.server_groups as sg
 from flask import render_template, request, make_response, jsonify, \
     current_app, url_for, session
 from flask_babel import gettext
-from flask_security import current_user, login_required
+from flask_security import current_user
+from pgadmin.user_login_check import pga_login_required
 from psycopg.conninfo import make_conninfo, conninfo_to_dict
+
 from pgadmin.browser.server_groups.servers.types import ServerType
 from pgadmin.browser.utils import PGChildNodeView
 from pgadmin.utils.ajax import make_json_response, bad_request, forbidden, \
@@ -30,7 +32,8 @@ from pgadmin.utils.driver import get_driver
 from pgadmin.utils.master_password import get_crypt_key
 from pgadmin.utils.exception import CryptKeyMissing
 from pgadmin.tools.schema_diff.node_registry import SchemaDiffRegistry
-from pgadmin.browser.server_groups.servers.utils import is_valid_ipaddress
+from pgadmin.browser.server_groups.servers.utils import \
+    is_valid_ipaddress, get_replication_type
 from pgadmin.utils.constants import UNAUTH_REQ, MIMETYPE_APP_JS, \
     SERVER_CONNECTION_CLOSED
 from sqlalchemy import or_
@@ -216,7 +219,7 @@ class ServerModule(sg.ServerGroupPluginModule):
 
         return servers
 
-    @login_required
+    @pga_login_required
     def get_nodes(self, gid):
         """Return a JSON document listing the server groups for the user"""
 
@@ -341,6 +344,9 @@ class ServerModule(sg.ServerGroupPluginModule):
         self.submodules.append(module)
 
         from .tablespaces import blueprint as module
+        self.submodules.append(module)
+
+        from .replica_nodes import blueprint as module
         self.submodules.append(module)
 
         super().register(app, options)
@@ -469,7 +475,7 @@ class ServerNode(PGChildNodeView):
         }],
         'check_pgpass': [{'get': 'check_pgpass'}],
         'clear_saved_password': [{'put': 'clear_saved_password'}],
-        'clear_sshtunnel_password': [{'put': 'clear_sshtunnel_password'}]
+        'clear_sshtunnel_password': [{'put': 'clear_sshtunnel_password'}],
     })
     SSL_MODES = ['prefer', 'require', 'verify-ca', 'verify-full']
 
@@ -559,7 +565,7 @@ class ServerNode(PGChildNodeView):
 
             data['connection_params'] = existing_conn_params
 
-    @login_required
+    @pga_login_required
     def nodes(self, gid):
         res = []
         """
@@ -645,7 +651,7 @@ class ServerNode(PGChildNodeView):
 
         return make_json_response(result=res)
 
-    @login_required
+    @pga_login_required
     def node(self, gid, sid):
         """Return a JSON document listing the server groups for the user"""
         server = Server.query.filter_by(id=sid).first()
@@ -728,7 +734,7 @@ class ServerNode(PGChildNodeView):
                 success=0,
                 errormsg=e.message)
 
-    @login_required
+    @pga_login_required
     def delete(self, gid, sid):
         """Delete a server node in the settings database."""
         servers = Server.query.filter_by(user_id=current_user.id, id=sid)
@@ -778,7 +784,7 @@ class ServerNode(PGChildNodeView):
         return make_json_response(success=1,
                                   info=gettext("Server deleted"))
 
-    @login_required
+    @pga_login_required
     def update(self, gid, sid):
         """Update the server settings"""
         server = Server.query.filter_by(id=sid).first()
@@ -983,7 +989,7 @@ class ServerNode(PGChildNodeView):
                         ).format(disp_lbl[arg])
                     )
 
-    @login_required
+    @pga_login_required
     def list(self, gid):
         """
         Return list of attributes of all servers.
@@ -1030,7 +1036,7 @@ class ServerNode(PGChildNodeView):
             response=res
         )
 
-    @login_required
+    @pga_login_required
     def properties(self, gid, sid):
         """Return list of attributes of a server"""
 
@@ -1144,12 +1150,12 @@ class ServerNode(PGChildNodeView):
         con_info_ord = OrderedDict([('host', server.host),
                                     ('port', server.port),
                                     ('dbname', db_name),
-                                    ('user', server.username)])
+                                    ('user', manager.user)])
         con_info_ord.update(con_info)
         display_conn_string = make_conninfo(**con_info_ord)
         return display_conn_string
 
-    @login_required
+    @pga_login_required
     def create(self, gid):
         """Add a server node to the settings database"""
         required_args = ['name', 'db']
@@ -1247,6 +1253,8 @@ class ServerNode(PGChildNodeView):
             connected = False
             user = None
             manager = None
+            replication_type = None
+            tunnel_password_saved = False
 
             if 'connect_now' in data and data['connect_now']:
                 manager = get_driver(PG_DEFAULT_DRIVER).connection_manager(
@@ -1323,7 +1331,10 @@ class ServerNode(PGChildNodeView):
                                 KEY_RING_TUNNEL_FORMAT.format(server.name,
                                                               server.id),
                                 tunnel_password)
+                            tunnel_password_saved = True
 
+                    replication_type = get_replication_type(conn,
+                                                            manager.version)
                     user = manager.user_info
                     connected = True
 
@@ -1337,6 +1348,7 @@ class ServerNode(PGChildNodeView):
                     username=server.username,
                     user=user,
                     connected=connected,
+                    replication_type=replication_type,
                     shared=server.shared,
                     server_type=manager.server_type
                     if manager and manager.server_type
@@ -1348,7 +1360,8 @@ class ServerNode(PGChildNodeView):
                     gss_authenticated=manager.gss_authenticated if
                     manager and manager.gss_authenticated else False,
                     is_password_saved=bool(server.save_password),
-                    is_tunnel_password_saved=bool(server.tunnel_password)
+                    is_tunnel_password_saved=tunnel_password_saved,
+                    user_id=server.user_id
                 )
             )
 
@@ -1364,15 +1377,15 @@ class ServerNode(PGChildNodeView):
                 errormsg=str(e)
             )
 
-    @login_required
+    @pga_login_required
     def sql(self, gid, sid):
         return make_json_response(data='')
 
-    @login_required
+    @pga_login_required
     def modified_sql(self, gid, sid):
         return make_json_response(data='')
 
-    @login_required
+    @pga_login_required
     def statistics(self, gid, sid):
         manager = get_driver(PG_DEFAULT_DRIVER).connection_manager(sid)
         conn = manager.connection()
@@ -1396,11 +1409,11 @@ class ServerNode(PGChildNodeView):
             )
         )
 
-    @login_required
+    @pga_login_required
     def dependencies(self, gid, sid):
         return make_json_response(data='')
 
-    @login_required
+    @pga_login_required
     def dependents(self, gid, sid):
         return make_json_response(data='')
 
@@ -1427,6 +1440,7 @@ class ServerNode(PGChildNodeView):
         in_recovery = None
         wal_paused = None
         errmsg = None
+        replication_type = None
         if connected:
             status, result, in_recovery, wal_paused =\
                 recovery_state(conn, manager.version)
@@ -1436,10 +1450,13 @@ class ServerNode(PGChildNodeView):
                 manager.release()
                 errmsg = "{0} : {1}".format(server.name, result)
 
+            replication_type = get_replication_type(conn, manager.version)
+
         return make_json_response(
             data={
                 'icon': server_icon_and_background(connected, manager, server),
                 'connected': connected,
+                'replication_type': replication_type,
                 'in_recovery': in_recovery,
                 'wal_pause': wal_paused,
                 'server_type': manager.server_type if connected else "pg",
@@ -1709,6 +1726,8 @@ class ServerNode(PGChildNodeView):
             _, _, in_recovery, wal_paused =\
                 recovery_state(conn, manager.version)
 
+            replication_type = get_replication_type(conn, manager.version)
+
             return make_json_response(
                 success=1,
                 info=gettext("Server connected."),
@@ -1716,6 +1735,7 @@ class ServerNode(PGChildNodeView):
                     'icon': server_icon_and_background(True, manager, server),
                     'connected': True,
                     'server_type': manager.server_type,
+                    'replication_type': replication_type,
                     'type': manager.server_type,
                     'version': manager.version,
                     'db': manager.db,
@@ -1799,7 +1819,11 @@ class ServerNode(PGChildNodeView):
             None
         """
         try:
-            data = request.form
+            data = None
+            if request.form:
+                data = request.form
+            elif request.data:
+                data = json.loads(request.data)
             restore_point_name = data['value'] if data else None
             manager = get_driver(PG_DEFAULT_DRIVER).connection_manager(sid)
             conn = manager.connection()
@@ -1812,10 +1836,10 @@ class ServerNode(PGChildNodeView):
                             restore_point_name
                         )
                     )
-                if not status:
-                    return internal_server_error(
-                        errormsg=str(res)
-                    )
+                    if not status:
+                        return internal_server_error(
+                            errormsg=str(res)
+                        )
 
                 return make_json_response(
                     data={
@@ -2142,8 +2166,8 @@ class ServerNode(PGChildNodeView):
                     session['allow_save_password'] else False,
                 "allow_save_tunnel_password":
                     True if config.ALLOW_SAVE_TUNNEL_PASSWORD and
-                    'allow_save_tunnel_password' in session and
-                    session['allow_save_tunnel_password'] else False
+                    'allow_save_password' in session and
+                    session['allow_save_password'] else False
             }
             return make_json_response(
                 success=0,

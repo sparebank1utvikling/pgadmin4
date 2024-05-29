@@ -201,7 +201,7 @@ class JobStepView(PGChildNodeView):
             self.template_path = 'pga_jobstep/sql/pre3.4'
 
             if 'pgAgent' not in self.manager.db_info:
-                status, res = self.conn.execute_dict("""
+                _, res = self.conn.execute_dict("""
 SELECT EXISTS(
         SELECT 1 FROM information_schema.columns
         WHERE
@@ -524,7 +524,7 @@ SELECT EXISTS(
         sql = ''
         for k, v in request.args.items():
             try:
-                data[k] = json.loads(v, 'utf-8')
+                data[k] = json.loads(v)
             except ValueError:
                 data[k] = v
 

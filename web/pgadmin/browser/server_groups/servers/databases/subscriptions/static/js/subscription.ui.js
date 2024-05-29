@@ -97,10 +97,7 @@ export default class SubscriptionSchema extends BaseUISchema{
     return false;
   }
   isRefresh(state){
-    if (!state.refresh_pub || _.isUndefined(state.refresh_pub)){
-      return true;
-    }
-    return false;
+    return !state.refresh_pub || _.isUndefined(state.refresh_pub);
   }
   isSSL(state) {
     return this.SSL_MODES.indexOf(state.sslmode) == -1;
@@ -159,7 +156,7 @@ export default class SubscriptionSchema extends BaseUISchema{
     },
     {
       id: 'password', label: gettext('Password'), type: 'password',
-      controlProps: { maxLength: null},
+      controlProps: { maxLength: null, autoComplete: 'new-password' },
       group: gettext('Connection'),
       mode: ['create', 'edit'], skipChange: true,
       deps: ['connect_now'],
@@ -336,7 +333,11 @@ export default class SubscriptionSchema extends BaseUISchema{
         state.copy_data_after_refresh = false;
         return true;
       }, depChange: (state)=>{
-        state.copy_data_after_refresh = state.refresh_pub ? state.copy_data_after_refresh ? false : true : false;
+        let copy_data_after_refresh = false;
+        if (state.refresh_pub && !state.copy_data_after_refresh) {
+          copy_data_after_refresh = true;
+        }
+        state.copy_data_after_refresh = copy_data_after_refresh;
       },
     },{
       id: 'connect', label: gettext('Connect?'),

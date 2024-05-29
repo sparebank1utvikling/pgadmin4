@@ -11,8 +11,8 @@ import gettext from 'sources/gettext';
 import _ from 'lodash';
 import url_for from 'sources/url_for';
 import React from 'react';
-import { Box, Paper} from '@material-ui/core';
-import { makeStyles } from '@material-ui/core/styles';
+import { Box, Paper} from '@mui/material';
+import { makeStyles } from '@mui/styles';
 import Wizard from '../../../../static/js/helpers/wizard/Wizard';
 import WizardStep from '../../../../static/js/helpers/wizard/WizardStep';
 import { FormFooterMessage, MESSAGE_TYPE, FormNote } from '../../../../static/js/components/FormComponents';
@@ -175,7 +175,7 @@ export default function ImportExportServers({onClose}) {
             .catch(() => {
               setLoaderText('');
               setErrMsg(gettext('Error while fetching Server Groups and Servers.'));
-              reject();
+              reject(new Error(gettext('Error while fetching Server Groups and Servers.')));
             });
         } else if (selectionFormData.imp_exp == 'i') {
           let load_servers_url = url_for('import_export_servers.load_servers');
@@ -192,7 +192,7 @@ export default function ImportExportServers({onClose}) {
             .catch((err) => {
               setLoaderText('');
               setErrMsg(err.response.data.errormsg);
-              reject();
+              reject(new Error(err.response.data.errormsg));
             });
         }
       } else {

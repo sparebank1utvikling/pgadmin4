@@ -10,10 +10,10 @@ import React, { useState, useEffect, useRef, useReducer, useMemo } from 'react';
 import PgTable from 'sources/components/PgTable';
 import gettext from 'sources/gettext';
 import PropTypes from 'prop-types';
-import { makeStyles } from '@material-ui/core/styles';
+import { makeStyles } from '@mui/styles';
 import {getGCD, getEpoch} from 'sources/utils';
-import ChartContainer from '../ChartContainer';
-import { Box, Grid } from '@material-ui/core';
+import ChartContainer from '../components/ChartContainer';
+import { Box, Grid } from '@mui/material';
 import { DATA_POINT_SIZE } from 'sources/chartjs';
 import StreamingChart from '../../../../static/js/components/PgChart/StreamingChart';
 import {useInterval, usePrevious} from 'sources/custom_hooks';
@@ -68,8 +68,6 @@ export default function Memory({preferences, sid, did, pageVisible, enablePoll=t
   const [memoryUsageInfo, memoryUsageInfoReduce] = useReducer(statsReducer, chartsDefault['m_stats']);
   const [swapMemoryUsageInfo, swapMemoryUsageInfoReduce] = useReducer(statsReducer, chartsDefault['sm_stats']);
   const [processMemoryUsageStats, setProcessMemoryUsageStats] = useState([]);
-
-  const [, setCounterData] = useState({});
 
   const [pollDelay, setPollDelay] = useState(5000);
   const [errorMsg, setErrorMsg] = useState(null);
@@ -199,20 +197,12 @@ export default function Memory({preferences, sid, did, pageVisible, enablePoll=t
 
           setProcessMemoryUsageStats(pmu_info_list);
         }
-
-        setCounterData((prevCounterData)=>{
-          return {
-            ...prevCounterData,
-            ...data,
-          };
-        });
       })
       .catch((error)=>{
         if(!errorMsg) {
           memoryUsageInfoReduce({reset:chartsDefault['m_stats']});
           swapMemoryUsageInfoReduce({reset:chartsDefault['sm_stats']});
           setProcessMemoryUsageStats([]);
-          setCounterData({});
           if(error.response) {
             if (error.response.status === 428) {
               setErrorMsg(gettext('Please connect to the selected server to view the graph.'));
@@ -241,7 +231,6 @@ export default function Memory({preferences, sid, did, pageVisible, enablePoll=t
           showTooltip={preferences['graph_mouse_track']}
           showDataPoints={preferences['graph_data_points']}
           lineBorderWidth={preferences['graph_line_border_width']}
-          isDatabase={did > 0}
           isTest={false}
         />
       }
@@ -267,21 +256,21 @@ export function MemoryWrapper(props) {
 
   return (
     <>
-      <Grid container spacing={1} className={classes.container}>
-        <Grid item md={6} sm={12}>
+      <Grid container spacing={0.5} className={classes.container}>
+        <Grid item md={6}>
           <ChartContainer id='m-graph' title={gettext('Memory')} datasets={props.memoryUsageInfo.datasets}  errorMsg={props.errorMsg} isTest={props.isTest}>
             <StreamingChart data={props.memoryUsageInfo} dataPointSize={DATA_POINT_SIZE} xRange={X_AXIS_LENGTH} options={options}
               valueFormatter={toPrettySize}/>
           </ChartContainer>
         </Grid>
-        <Grid item md={6} sm={12}>
+        <Grid item md={6}>
           <ChartContainer id='sm-graph' title={gettext('Swap memory')} datasets={props.swapMemoryUsageInfo.datasets}  errorMsg={props.errorMsg} isTest={props.isTest}>
             <StreamingChart data={props.swapMemoryUsageInfo} dataPointSize={DATA_POINT_SIZE} xRange={X_AXIS_LENGTH} options={options}
               valueFormatter={toPrettySize}/>
           </ChartContainer>
         </Grid>
       </Grid>
-      <Grid container spacing={1} className={classes.fixedContainer}>
+      <Grid container spacing={0.5} className={classes.fixedContainer}>
         <div className={classes.tableContainer}>
           <PgTable
             className={classes.autoResizer}
@@ -313,6 +302,5 @@ MemoryWrapper.propTypes = {
   showTooltip: PropTypes.bool.isRequired,
   showDataPoints: PropTypes.bool.isRequired,
   lineBorderWidth: PropTypes.number.isRequired,
-  isDatabase: PropTypes.bool.isRequired,
   isTest: PropTypes.bool,
 };

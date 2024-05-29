@@ -682,7 +682,7 @@ It may have been removed by another user.
                 if k in ('comment',):
                     data[k] = v
                 else:
-                    data[k] = json.loads(v, encoding='utf-8')
+                    data[k] = json.loads(v)
             except (ValueError, TypeError, KeyError):
                 data[k] = v
 
@@ -865,7 +865,7 @@ It may have been removed by another user.
                 data[k] = v
 
         try:
-            SQL, name = self.get_sql(gid, sid, data, scid)
+            SQL, _ = self.get_sql(gid, sid, data, scid)
             if SQL and SQL.strip('\n') and SQL.strip(' '):
                 return make_json_response(
                     data=SQL.strip('\n'),

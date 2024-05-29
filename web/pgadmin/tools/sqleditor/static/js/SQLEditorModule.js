@@ -51,7 +51,7 @@ export default class SQLEditor {
   viewMenuEnabled(obj) {
     let isEnabled = (() => {
       if (!_.isUndefined(obj) && !_.isNull(obj))
-        return (_.indexOf(this.SUPPORTED_NODES, obj._type) !== -1 ? true : false);
+        return (_.indexOf(this.SUPPORTED_NODES, obj._type) !== -1);
       else
         return false;
     })();
@@ -226,6 +226,7 @@ export default class SQLEditor {
     let selectedNodeInfo = pgWindow.pgAdmin.Browser.tree.getTreeNodeHierarchy(
       pgWindow.pgAdmin.Browser.tree.selected()
     );
+    pgAdmin.Browser.keyboardNavigation.init();
     await listenPreferenceBroadcast();
     ReactDOM.render(
       <Theme>

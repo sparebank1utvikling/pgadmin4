@@ -1,15 +1,16 @@
-import { Checkbox, makeStyles } from '@material-ui/core';
+import { Checkbox } from '@mui/material';
+import { makeStyles } from '@mui/styles';
 import clsx from 'clsx';
 import gettext from 'sources/gettext';
 import React, { useEffect, useRef } from 'react';
 import { Tree } from 'react-arborist';
 import AutoSizer from 'react-virtualized-auto-sizer';
-import ExpandMoreIcon from '@material-ui/icons/ExpandMore';
-import ChevronRightIcon from '@material-ui/icons/ChevronRight';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import PropTypes from 'prop-types';
-import IndeterminateCheckBoxIcon from '@material-ui/icons/IndeterminateCheckBox';
+import IndeterminateCheckBoxIcon from '@mui/icons-material/IndeterminateCheckBox';
 import EmptyPanelMessage from '../components/EmptyPanelMessage';
-import CheckBoxIcon from '@material-ui/icons/CheckBox';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
 
 
 const useStyles = makeStyles((theme) => ({
@@ -44,7 +45,7 @@ export default function PgTreeView({ data = [], hasCheckbox = false, selectionCh
   let treeData = data;
   const treeObj = useRef();
   const treeContainerRef = useRef();
-  const [selectedCheckBoxNodes, setSelectedCheckBoxNodes] = React.useState();
+  const [selectedCheckBoxNodes, setSelectedCheckBoxNodes] = React.useState([]);
 
   const onSelectionChange = () => {
     let selectedChNodes = treeObj.current.selectedNodes;
@@ -70,7 +71,7 @@ export default function PgTreeView({ data = [], hasCheckbox = false, selectionCh
 
   return (<>
     { treeData.length > 0 ?
-      <PgTreeSelectionContext.Provider value={_.isUndefined(selectedCheckBoxNodes) ? []: selectedCheckBoxNodes}>
+      <PgTreeSelectionContext.Provider value={selectedCheckBoxNodes}>
         <div ref={(containerRef) => treeContainerRef.current = containerRef} className={clsx(classes.tree)}>
           <AutoSizer>
             {({ width, height }) => (
@@ -109,8 +110,8 @@ PgTreeView.propTypes = {
 function Node({ node, style, tree, hasCheckbox, onNodeSelectionChange}) {
   const classes = useStyles();
   const pgTreeSelCtx = React.useContext(PgTreeSelectionContext);
-  const [isSelected, setIsSelected] = React.useState(pgTreeSelCtx.includes(node.id) || node.data?.isSelected ? true : false);
-  const [isIndeterminate, setIsIndeterminate] = React.useState(node?.parent.level==0? true: false);
+  const [isSelected, setIsSelected] = React.useState(pgTreeSelCtx.includes(node.id) || node.data?.isSelected);
+  const [isIndeterminate, setIsIndeterminate] = React.useState(node?.parent.level==0);
 
   useEffect(()=>{
     setIsIndeterminate(node.data.isIndeterminate);
@@ -136,10 +137,8 @@ function Node({ node, style, tree, hasCheckbox, onNodeSelectionChange}) {
         if (!node.isLeaf) {
           node.data.isIndeterminate = false;
           selectAllChild(node, tree, 'checkbox', pgTreeSelCtx);
-        } else {
-          if (node?.parent) {
-            checkAndSelectParent(node);
-          }
+        } else if (node?.parent) {
+          checkAndSelectParent(node);
         }
 
         if(node?.level == 0) {
@@ -162,15 +161,23 @@ function Node({ node, style, tree, hasCheckbox, onNodeSelectionChange}) {
     onNodeSelectionChange();
   };
 
+  const onSelect = (e) => {
+    node.focus();
+    e.stopPropagation();
+  };
+
+  const onKeyDown = (e) => {
+    if(e.code == 'Enter') {
+      onSelect(e);
+    }
+  };
+
   return (
-    <div style={style} className={clsx(node.isFocused ? classes.focusedNode : '')} onClick={(e) => {
-      node.focus();
-      e.stopPropagation();
-    }}>
+    <div style={style} className={clsx(node.isFocused ? classes.focusedNode : '')} onClick={onSelect} onKeyDown={onKeyDown}>
       <CollectionArrow node={node} tree={tree} selectedNodeIds={pgTreeSelCtx} />
       {
         hasCheckbox ? <Checkbox style={{ padding: 0 }} color="primary" className={clsx(!node.isInternal ? classes.leafNode: null)}
-          checked={isSelected ? true: false}
+          checked={isSelected}
           checkedIcon={isIndeterminate  ? <IndeterminateCheckBoxIcon style={{height: '1.4rem'}} />: <CheckBoxIcon style={{height: '1.4rem'}} />}
           onChange={onCheckboxSelection}/> :
           <span className={clsx(node.data.icon)}></span>
@@ -197,8 +204,8 @@ function CollectionArrow({ node, tree, selectedNodeIds }) {
     }
   };
   return (
-    <span onClick={toggleNode} >
-      {node.isInternal ? <ToggleArrowIcon node={node} /> : null}
+    <span onClick={toggleNode} onKeyDown={()=>{/* handled by parent */}}>
+      {node.isInternal && node?.children.length > 0 ? <ToggleArrowIcon node={node} /> : null}
     </span>
   );
 }
@@ -275,10 +282,7 @@ function selectAllChild(chNode, tree, source, selectedNodeIds){
     if(!child.isLeaf) {
       child.data.isIndeterminate = false;
     }
-    if(source == 'expand' && selectedNodeIds.includes(child.id)) {
-      child.data.isSelected = true;
-      selectedChild += 1;
-    } else if(source == 'checkbox'){
+    if((source == 'expand' && selectedNodeIds.includes(child.id)) || source == 'checkbox') {
       child.data.isSelected = true;
       selectedChild += 1;
     }

@@ -6,21 +6,22 @@
 // This software is released under the PostgreSQL Licence
 //
 //////////////////////////////////////////////////////////////
-import { Box, makeStyles } from '@material-ui/core';
+import { Box } from '@mui/material';
+import { makeStyles } from '@mui/styles';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DefaultButton, PgButtonGroup, PgIconButton, PrimaryButton } from '../../../../../static/js/components/Buttons';
 import { useModalStyles } from '../../../../../static/js/helpers/ModalProvider';
-import CloseIcon from '@material-ui/icons/CloseRounded';
-import FolderSharedIcon from '@material-ui/icons/FolderShared';
-import FolderIcon from '@material-ui/icons/Folder';
-import CheckRoundedIcon from '@material-ui/icons/CheckRounded';
-import HomeRoundedIcon from '@material-ui/icons/HomeRounded';
-import ArrowUpwardRoundedIcon from '@material-ui/icons/ArrowUpwardRounded';
-import KeyboardArrowDownIcon from '@material-ui/icons/KeyboardArrowDown';
-import MoreHorizRoundedIcon from '@material-ui/icons/MoreHorizRounded';
-import SyncRoundedIcon from '@material-ui/icons/SyncRounded';
-import CreateNewFolderRoundedIcon from '@material-ui/icons/CreateNewFolderRounded';
-import GetAppRoundedIcon from '@material-ui/icons/GetAppRounded';
+import CloseIcon from '@mui/icons-material/CloseRounded';
+import FolderSharedIcon from '@mui/icons-material/FolderShared';
+import FolderIcon from '@mui/icons-material/Folder';
+import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
+import HomeRoundedIcon from '@mui/icons-material/HomeRounded';
+import ArrowUpwardRoundedIcon from '@mui/icons-material/ArrowUpwardRounded';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import MoreHorizRoundedIcon from '@mui/icons-material/MoreHorizRounded';
+import SyncRoundedIcon from '@mui/icons-material/SyncRounded';
+import CreateNewFolderRoundedIcon from '@mui/icons-material/CreateNewFolderRounded';
+import GetAppRoundedIcon from '@mui/icons-material/GetAppRounded';
 import gettext from 'sources/gettext';
 import clsx from 'clsx';
 import { FormFooterMessage, InputSelectNonSearch, InputText, MESSAGE_TYPE } from '../../../../../static/js/components/FormComponents';
@@ -616,10 +617,8 @@ export default function FileManager({params, closeModal, onOK, onCancel, sharedS
   const onItemEnter = useCallback(async (row)=>{
     if(row.file_type == 'dir' || row.file_type == 'drive') {
       await openDir(row.Path, selectedSS);
-    } else {
-      if(params.dialog_type == 'select_file') {
-        onOkClick();
-      }
+    } else if(params.dialog_type == 'select_file') {
+      onOkClick();
     }
   }, [filteredItems]);
   const onItemSelect = useCallback((idx)=>{
@@ -674,9 +673,7 @@ export default function FileManager({params, closeModal, onOK, onCancel, sharedS
       (params?.dialog_type != 'storage_dialog' && params?.path) && fmUtilsObj.setLastVisitedDir(params?.path, selectedSS);
     };
     init();
-    setTimeout(()=>{
-      saveAsRef.current && saveAsRef.current.focus();
-    }, 300);
+    setTimeout(()=>{ saveAsRef.current?.focus(); }, 300);
     return ()=>{
       fmUtilsObj.destroy();
     };
@@ -713,7 +710,7 @@ export default function FileManager({params, closeModal, onOK, onCancel, sharedS
               <PgIconButton title={gettext('Go Back')} onClick={async ()=>{
                 await openDir(fmUtilsObj.dirname(fmUtilsObj.currPath), selectedSS);
               }} icon={<ArrowUpwardRoundedIcon />} disabled={!fmUtilsObj.dirname(fmUtilsObj.currPath) || showUploader} />
-              <InputText className={classes.inputFilename}
+              <InputText size="small" className={classes.inputFilename}
                 data-label="file-path"
                 controlProps={{maxLength: null}}
                 onKeyDown={async (e)=>{
