@@ -44,8 +44,11 @@ RUN rm -rf /pgadmin4/web/*.log \
 
 WORKDIR /pgadmin4/web
 
+
+
 # Build the JS vendor code in the app-builder, and then remove the vendor source.
 RUN export CPPFLAGS="-DPNG_ARM_NEON_OPT=0" && \
+    corepack enable && \
     yarn set version berry && \
     yarn set version 3 && \
     yarn install && \
