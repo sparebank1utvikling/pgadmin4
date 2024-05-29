@@ -30,12 +30,6 @@ RUN apk add --no-cache \
     npm \
     zlib-dev
 
-# Set the CPPFLAGS environment variable
-ENV CPPFLAGS="-DPNG_ARM_NEON_OPT=0"
-
-RUN /usr/bin/yarn
-RUN echo "Yarn got runned"
-
 # Create the /pgadmin4 directory and copy the source into it. Explicitly
 # remove the node_modules directory as we'll recreate a clean version, as well
 # as various other files we don't want
