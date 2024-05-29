@@ -189,7 +189,6 @@ COPY DEPENDENCIES /pgadmin4/DEPENDENCIES
 
 # Install runtime dependencies and configure everything in one RUN step
 RUN apk add \
-        python3.11 \
         python3 \
         py3-pip \
         postfix \
@@ -211,7 +210,7 @@ RUN apk add \
     chown pgadmin:root /pgadmin4/config_distro.py && \
     chmod g=u /pgadmin4/config_distro.py && \
     chmod g=u /etc/passwd && \
-    setcap CAP_NET_BIND_SERVICE=+eip /usr/bin/python3.11 && \
+    setcap CAP_NET_BIND_SERVICE=+eip /usr/bin/python3.12 && \
     echo "pgadmin ALL = NOPASSWD: /usr/sbin/postfix start" > /etc/sudoers.d/postfix && \
     echo "pgadminr ALL = NOPASSWD: /usr/sbin/postfix start" >> /etc/sudoers.d/postfix
 
