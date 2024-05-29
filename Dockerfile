@@ -189,6 +189,7 @@ COPY DEPENDENCIES /pgadmin4/DEPENDENCIES
 
 # Install runtime dependencies and configure everything in one RUN step
 RUN apk add \
+        python3.11 \
         python3 \
         py3-pip \
         postfix \
