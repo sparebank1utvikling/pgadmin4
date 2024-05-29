@@ -45,45 +45,20 @@ RUN rm -rf /pgadmin4/web/*.log \
 WORKDIR /pgadmin4/web
 
 # Build the JS vendor code in the app-builder, and then remove the vendor source.
-ENV CPPFLAGS="-DPNG_ARM_NEON_OPT=0"
-
-# Set Yarn version to Berry
-RUN yarn set version berry
-
-# Check if the previous command was successful
-RUN echo "Yarn set version berry succeeded"
-
-# Set Yarn version to 3
-RUN yarn set version 3
-
-# Check if the previous command was successful
-RUN echo "Yarn set version 3 succeeded"
-
-# Install Yarn dependencies
-RUN yarn install
-
-# Check if the previous command was successful
-RUN echo "Yarn install succeeded"
-
-# Bundle Yarn packages
-RUN yarn run bundle
-
-# Check if the previous command was successful
-RUN echo "Yarn run bundle succeeded"
-
-# Clean up unnecessary files
-RUN rm -rf node_modules \
-    yarn.lock \
-    package.json \
-    .[^.]* \
-    babel.cfg \
-    webpack.* \
-    jest.config.js \
-    babel.* \
-    ./pgadmin/static/js/generated/.cache
-
-# Check if the previous command was successful
-RUN echo "Cleanup succeeded"
+RUN export CPPFLAGS="-DPNG_ARM_NEON_OPT=0" && \
+    yarn set version berry && \
+    yarn set version 3 && \
+    yarn install && \
+    yarn run bundle && \
+    rm -rf node_modules \
+           yarn.lock \
+           package.json \
+           .[^.]* \
+           babel.cfg \
+           webpack.* \
+           jest.config.js \
+           babel.* \
+           ./pgadmin/static/js/generated/.cache
 
 #########################################################################
 # Next, create the base environment for Python
