@@ -44,7 +44,8 @@ RUN rm -rf /pgadmin4/web/*.log \
 
 WORKDIR /pgadmin4/web
 
-RUN node --version
+RUN which corepack
+RUN corepack --version
 
 # Build the JS vendor code in the app-builder, and then remove the vendor source.
 RUN export CPPFLAGS="-DPNG_ARM_NEON_OPT=0" && \
