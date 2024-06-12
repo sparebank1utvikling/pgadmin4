@@ -116,7 +116,7 @@ class UserManagementCollection extends BaseUISchema {
           return obj.isEditable(state);
         }
       }, {
-        id: 'active', label: gettext('Active'), cell: 'switch', width: 60, disableResizing: true,
+        id: 'active', label: gettext('Active'), cell: 'switch', width: 60, enableResizing: false,
         editable: (state)=> {
           return obj.isEditable(state);
         }
@@ -137,7 +137,7 @@ class UserManagementCollection extends BaseUISchema {
           return obj.isEditable(state) && state.auth_source == AUTH_METHODS['INTERNAL'];
         }
       }, {
-        id: 'locked', label: gettext('Locked'), cell: 'switch', width: 60, disableResizing: true,
+        id: 'locked', label: gettext('Locked'), cell: 'switch', width: 60, enableResizing: false,
         editable: (state)=> {
           return state.locked;
         }
@@ -294,7 +294,7 @@ class UserManagementSchema extends BaseUISchema {
         canSearch: true
       },
       {
-        id: 'refreshBrowserTree', visible: false, type: 'boolean',
+        id: 'refreshBrowserTree', visible: false, type: 'switch',
         deps: ['userManagement'], depChange: ()=> {
           return { refreshBrowserTree: this.changeOwnership };
         }

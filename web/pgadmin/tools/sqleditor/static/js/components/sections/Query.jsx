@@ -21,8 +21,10 @@ import { checkTrojanSource, isShortcutValue, toCodeMirrorKey } from '../../../..
 import { parseApiError } from '../../../../../../static/js/api_instance';
 import { usePgAdmin } from '../../../../../../static/js/BrowserComponent';
 import ConfirmPromotionContent from '../dialogs/ConfirmPromotionContent';
+import ConfirmExecuteQueryContent from '../dialogs/ConfirmExecuteQueryContent';
 import usePreferences from '../../../../../../preferences/static/js/store';
 import { getTitle } from '../../sqleditor_title';
+import PropTypes from 'prop-types';
 
 
 const useStyles = makeStyles(()=>({
@@ -61,7 +63,7 @@ async function registerAutocomplete(editor, api, transId) {
   });
 }
 
-export default function Query() {
+export default function Query({onTextSelect}) {
   const classes = useStyles();
   const editor = React.useRef();
   const eventBus = useContext(QueryToolEventsContext);
@@ -73,7 +75,7 @@ export default function Query() {
 
   const queryToolPref = queryToolCtx.preferences.sqleditor;
 
-  const highlightError = (cmObj, {errormsg: result, data})=>{
+  const highlightError = (cmObj, {errormsg: result, data}, executeCursor)=>{
     let errorLineNo = 0,
       startMarker = 0,
       endMarker = 0,
@@ -83,9 +85,9 @@ export default function Query() {
     cmObj.removeErrorMark();
 
     // In case of selection we need to find the actual line no
-    if (cmObj.getSelection().length > 0) {
+    if (cmObj.getSelection().length > 0 || executeCursor) {
       selectedLineNo = cmObj.getCurrentLineNo();
-      origQueryLen = cmObj.line(selectedLineNo).length;
+      origQueryLen = cmObj.getLine(selectedLineNo).length;
     }
 
     // Fetch the LINE string using regex from the result
@@ -143,7 +145,7 @@ export default function Query() {
     }
   };
 
-  const triggerExecution = (explainObject, macroSQL)=>{
+  const triggerExecution = (executeCursor=false, explainObject, macroSQL)=>{
     if(queryToolCtx.params.is_query_tool) {
       let external = null;
       let query = editor.current?.getSelection();
@@ -151,12 +153,15 @@ export default function Query() {
         const regex = /\$SELECTION\$/gi;
         query =  macroSQL.replace(regex, query);
         external = true;
-      } else{
+      } else if(executeCursor) {
+        /* Execute query at cursor position */
+        query = query || editor.current?.getQueryAt(editor.current?.state.selection.head).value || '';
+      } else {
         /* Normal execution */
         query = query || editor.current?.getValue() || '';
       }
       if(query) {
-        eventBus.fireEvent(QUERY_TOOL_EVENTS.EXECUTION_START, query, explainObject, external, null);
+        eventBus.fireEvent(QUERY_TOOL_EVENTS.EXECUTION_START, query, explainObject, external, null, executeCursor);
       }
     } else {
       eventBus.fireEvent(QUERY_TOOL_EVENTS.EXECUTION_START, null, null);
@@ -169,10 +174,11 @@ export default function Query() {
     });
 
     eventBus.registerListener(QUERY_TOOL_EVENTS.TRIGGER_EXECUTION, triggerExecution);
+    eventBus.registerListener(QUERY_TOOL_EVENTS.EXECUTE_CURSOR_WARNING, checkUnderlineQueryCursorWarning);
 
-    eventBus.registerListener(QUERY_TOOL_EVENTS.HIGHLIGHT_ERROR, (result)=>{
+    eventBus.registerListener(QUERY_TOOL_EVENTS.HIGHLIGHT_ERROR, (result, executeCursor)=>{
       if(result) {
-        highlightError(editor.current, result);
+        highlightError(editor.current, result, executeCursor);
       } else {
         editor.current.removeErrorMark();
       }
@@ -384,13 +390,17 @@ export default function Query() {
   }, [queryToolCtx.params.trans_id]);
 
   const cursorActivity = useCallback(_.debounce((cursor)=>{
+    if (queryToolCtx.preferences.sqleditor.underline_query_cursor){
+      let {from, to}=editor.current.getQueryAt(editor.current?.state.selection.head);
+      editor.current.setQueryHighlightMark(from,to);
+    }
+
     lastCursorPos.current = cursor;
     eventBus.fireEvent(QUERY_TOOL_EVENTS.CURSOR_ACTIVITY, [lastCursorPos.current.line, lastCursorPos.current.ch+1]);
   }, 100), []);
 
   const change = useCallback(()=>{
     eventBus.fireEvent(QUERY_TOOL_EVENTS.QUERY_CHANGED, editor.current.isDirty());
-
     if(!queryToolCtx.params.is_query_tool && editor.current.isDirty()){
       if(queryToolCtx.preferences.sqleditor.view_edit_promotion_warning){
         checkViewEditDataPromotion();
@@ -430,6 +440,28 @@ export default function Query() {
     }, {
       onClose:()=>{
         closePromotionWarning();
+      }
+    });
+  };
+
+  const checkUnderlineQueryCursorWarning = () => {
+    let query = editor.current?.getSelection();
+    query = query || editor.current?.getQueryAt(editor.current?.state.selection.head).value || '';
+    query && queryToolCtx.modal.showModal(gettext('Execute query'), (closeModal) =>{
+      return (<ConfirmExecuteQueryContent
+        closeModal={closeModal}
+        text={query}
+        onContinue={(formData)=>{
+          preferencesStore.setPreference(formData);
+          eventBus.fireEvent(QUERY_TOOL_EVENTS.TRIGGER_EXECUTION,true);
+        }}
+        onClose={()=>{
+          closeModal?.();
+        }}
+      />);
+    }, {
+      onClose:(closeModal)=>{
+        closeModal?.();
       }
     });
   };
@@ -480,5 +512,11 @@ export default function Query() {
     onChange={change}
     autocomplete={true}
     customKeyMap={shortcutOverrideKeys}
+    onTextSelect={onTextSelect}
   />;
 }
+
+
+Query.propTypes = {
+  onTextSelect: PropTypes.func,
+};

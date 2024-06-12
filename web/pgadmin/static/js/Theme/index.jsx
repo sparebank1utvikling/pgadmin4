@@ -335,6 +335,9 @@ function getFinalTheme(baseTheme) {
       },
       right: {
         borderRight: '1px solid '+baseTheme.otherVars.borderColor,
+      },
+      left: {
+        borderLeft: '1px solid '+baseTheme.otherVars.borderColor,
       }
     },
     nodeIcon: {
@@ -347,6 +350,7 @@ function getFinalTheme(baseTheme) {
       overflow: 'auto',
       backgroundColor: baseTheme.palette.grey[400],
       position: 'relative',
+      flexGrow: 1,
     },
     fontSourceCode: {
       fontFamily: '"Source Code Pro", SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
@@ -573,6 +577,12 @@ function getFinalTheme(baseTheme) {
             '&:not(:first-of-type)': {
               borderLeft: 'abc'
             }
+          },
+          middleButton: {
+            borderLeftColor: baseTheme.otherVars.borderColor,
+          },
+          lastButton: {
+            borderLeftColor: baseTheme.otherVars.borderColor,
           }
         }
       },
@@ -631,24 +641,22 @@ function getFinalTheme(baseTheme) {
       MuiToggleButton: {
         styleOverrides: {
           root: {
-            paddingTop: '2px',
-            paddingBottom: '2px',
-            paddingRight: baseTheme.spacing(2.5),
-            paddingLeft: baseTheme.spacing(0.5),
+            padding: '3px 16px 3px 4px',
             color: 'abc',
             textTransform: 'initial',
             '&:hover':{
               backgroundColor: 'abc',
             },
             '&.Mui-selected': {
-              color: [baseTheme.palette.primary.contrastText,'!important'],
-              backgroundColor: baseTheme.palette.primary.main,
+              color: baseTheme.palette.primary.contrastTextLight ?? baseTheme.palette.primary.main,
+              backgroundColor: baseTheme.palette.primary.light,
+              borderColor: baseTheme.palette.primary.main,
+              zIndex: 1,
               '&:hover':{
-                //backgroundColor: 'abc',
-                backgroundColor: baseTheme.palette.primary.hoverMain,
-                borderColor: baseTheme.palette.primary.hoverBorderColor,
+                backgroundColor: baseTheme.palette.primary.hoverLight,
               }
-            }
+            },
+            backgroundClip: 'padding-box',
           },
         }
       },

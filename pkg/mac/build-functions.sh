@@ -24,6 +24,7 @@ _cleanup() {
 
 _build_runtime() {
     echo "Assembling the runtime environment..."
+
     test -d "${BUILD_ROOT}" || mkdir "${BUILD_ROOT}"
 
     # Get a fresh copy of nwjs.
@@ -71,9 +72,16 @@ _build_runtime() {
     cp -R "${SOURCE_DIR}/runtime/assets" "${BUNDLE_DIR}/Contents/Resources/app.nw/"
     cp -R "${SOURCE_DIR}/runtime/src" "${BUNDLE_DIR}/Contents/Resources/app.nw/"
     cp "${SOURCE_DIR}/runtime/package.json" "${BUNDLE_DIR}/Contents/Resources/app.nw/"
+    cp "${SOURCE_DIR}/runtime/.yarnrc.yml" "${BUNDLE_DIR}/Contents/Resources/app.nw/"
 
     # Install the runtime node_modules, then replace the package.json
-    yarn --cwd "${BUNDLE_DIR}/Contents/Resources/app.nw/" install --production=true
+    pushd "${BUNDLE_DIR}/Contents/Resources/app.nw/" > /dev/null || exit
+        yarn set version berry
+        yarn set version 3
+        yarn plugin import workspace-tools
+        yarn workspaces focus --production
+
+    popd > /dev/null || exit
 }
 
 _create_python_env() {
@@ -288,7 +296,6 @@ _complete_bundle() {
 
     # Build node modules
     pushd "${SOURCE_DIR}/web" > /dev/null || exit
-        corepack enable
         yarn set version berry
         yarn set version 3
         yarn install

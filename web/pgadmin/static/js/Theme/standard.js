@@ -29,6 +29,7 @@ export default function(basicSettings) {
         contrastText: '#fff',
         hoverMain: darken('#326690', 0.25),
         hoverBorderColor: darken('#326690', 0.25),
+        hoverLight: darken('#d6effc', 0.05),
         disabledMain: '#326690',
       },
       success:  {
@@ -155,7 +156,7 @@ export default function(basicSettings) {
         foldmarker: '#0000FF',
         activeline: '#EDF9FF',
         activelineLight: '#EDF9FF',
-        activelineBorderColor: '#BCDEF3',
+        currentQueryBorderColor: '#A5CBE2',
         guttersBg: '#f3f5f9',
         guttersFg: '#848ea0',
       },

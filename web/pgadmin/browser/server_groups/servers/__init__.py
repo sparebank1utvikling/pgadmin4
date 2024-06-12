@@ -349,6 +349,9 @@ class ServerModule(sg.ServerGroupPluginModule):
         from .replica_nodes import blueprint as module
         self.submodules.append(module)
 
+        from .pgd_replication_groups import blueprint as module
+        self.submodules.append(module)
+
         super().register(app, options)
 
     # We do not have any preferences for server node.
@@ -1476,7 +1479,7 @@ class ServerNode(PGChildNodeView):
             If Yes, connect the server and return connection.
             If No, Raise HTTP error and ask for the password.
 
-            In case of 'Save Password' request from user, excrypted Pasword
+            In case of 'Save Password' request from user, excrypted Password
             will be stored in the respected server database and
             establish the connection OR just connect the server and do not
             store the password.

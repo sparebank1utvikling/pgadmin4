@@ -21,6 +21,7 @@ const useStyles = makeStyles((theme) => ({
     height: '100%',
     width: '100%',
     minHeight: '400px',
+    borderRadius: theme.shape.borderRadius,
   },
   cardHeader: {
     backgroundColor: theme.otherVars.tableBg,
@@ -46,7 +47,7 @@ export default function SectionContainer({title, titleExtras, children, style}) 
           {titleExtras}
         </div>
       </Box>
-      <Box height="100%" display="flex" flexDirection="column">
+      <Box height="100%" display="flex" flexDirection="column" minHeight={0}>
         {children}
       </Box>
     </Box>

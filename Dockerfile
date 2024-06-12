@@ -169,7 +169,7 @@ COPY --from=pg16-builder /usr/lib/liblz4.so.1.9.4 /usr/lib/
 
 RUN ln -s libpq.so.5.16 /usr/lib/libpq.so.5 && \
     ln -s libpq.so.5.16 /usr/lib/libpq.so && \
-    ln -s libzstd.so.1.5.5 /usr/lib/libzstd.so.1 && \
+    ln -s libzstd.so.1.5.6 /usr/lib/libzstd.so.1 && \
     ln -s liblz4.so.1.9.4 /usr/lib/liblz4.so.1
 
 WORKDIR /pgadmin4
@@ -199,7 +199,7 @@ RUN apk add \
         libedit \
         libldap \
         libcap && \
-    /venv/bin/python3 -m pip install --no-cache-dir gunicorn==20.1.0 && \
+    /venv/bin/python3 -m pip install --no-cache-dir gunicorn==22.0.0 && \
     find / -type d -name '__pycache__' -exec rm -rf {} + && \
     useradd -r -u 5050 -g root -s /sbin/nologin pgadmin && \
     mkdir -p /run/pgadmin /var/lib/pgadmin && \

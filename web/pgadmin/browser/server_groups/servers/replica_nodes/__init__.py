@@ -86,6 +86,10 @@ class ReplicationNodesModule(CollectionNodeModule):
         return False
 
     @property
+    def collection_icon(self):
+        return 'icon-server_group'
+
+    @property
     def script_load(self):
         """
         Load the module script for Replication Nodes, when any of the server
@@ -103,7 +107,7 @@ class ReplicationNodesModule(CollectionNodeModule):
             conn = manager.connection(sid=kwargs['sid'])
 
             replication_type = get_replication_type(conn, manager.version)
-            return bool(replication_type)
+            return replication_type == 'log'
 
 
 blueprint = ReplicationNodesModule(__name__)
@@ -248,7 +252,6 @@ class ReplicationNodesView(PGChildNodeView):
                     row['pid'],
                     sid,
                     row['name'],
-                    icon="icon-replica_nodes"
                 ))
 
         return make_json_response(
